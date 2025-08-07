@@ -7,6 +7,7 @@ import {
   Image,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { getUserById } from '../../api/userApi';
@@ -61,81 +62,72 @@ const ViewUserProfileScreen = () => {
   if (!user) return <Text style={styles.loading}>Loading...</Text>;
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.name}>
-        {user.first_name} {user.last_name}
-      </Text>
-      <Text style={styles.rating}>
-        ⭐ Average Rating: {rating ?? 'N/A'}
-      </Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container}>
+        <Text style={styles.name}>{user.first_name} {user.last_name}</Text>
+        <Text style={styles.rating}>⭐ Average Rating: {rating ?? 'N/A'}</Text>
 
-      {/* Photos */}
-      <FlatList
-        data={photos}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={3}
-        style={styles.photoList}
-        renderItem={({ item }) => (
-          <Image source={{ uri: item.image_url }} style={styles.photo} />
-        )}
-      />
+        {/* Photos */}
+        <FlatList
+          data={photos}
+          keyExtractor={(item, index) => item?.id ? item.id.toString(): index.toString()}
+          numColumns={3}
+          style={styles.photoList}
+          renderItem={({ item }) => (
+            <Image source={{ uri: item.image_url }} style={styles.photo} />
+          )}
+        />
 
-      {/* About Me */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About Me</Text>
-        <Text style={styles.sectionText}>
-          {user.about_me || 'This user hasn’t added anything yet.'}
-        </Text>
-      </View>
-
-      {/* Profile Info */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Profile Info</Text>
-        <Text style={styles.sectionText}>
-          Experience Level: {user.experience_level || 'Not specified'}
-        </Text>
-        <Text style={styles.sectionText}>
-          Lifestyle: {user.lifestyle || 'Not specified'}
-        </Text>
-        <Text style={styles.sectionText}>
-          Consistency: {user.consistency || 'Not specified'}
-        </Text>
-      </View>
-
-      {/* Badges */}
-      {user.badges && user.badges.length > 0 && (
-        <View style={styles.badgeContainer}>
-          {user.badges.map((badge: string, index: number) => (
-            <View key={index} style={styles.badge}>
-              <Text style={styles.badgeText}>{badge}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Recent Reviews */}
-      {recentReviews.length > 0 && (
+        {/* About Me */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Reviews</Text>
-          {recentReviews.map((review) => (
-            <View key={review.review_id} style={styles.reviewItem}>
-              <Text style={styles.stars}>
-                {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
-              </Text>
-              <Text style={styles.reviewText}>{review.comment}</Text>
-              <Text style={styles.timestamp}>
-                {new Date(review.created_at).toLocaleString()}
-              </Text>
-            </View>
-          ))}
+          <Text style={styles.sectionTitle}>About Me</Text>
+          <Text style={styles.sectionText}>
+            {user.about_me || 'This user hasn’t added anything yet.'}
+          </Text>
         </View>
-      )}
-    </ScrollView>
+
+        {/* Profile Info */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Profile Info</Text>
+          <Text style={styles.sectionText}>Experience Level: {user.experience_level || 'Not specified'}</Text>
+          <Text style={styles.sectionText}>Lifestyle: {user.lifestyle || 'Not specified'}</Text>
+          <Text style={styles.sectionText}>Consistency: {user.consistency || 'Not specified'}</Text>
+        </View>
+
+        {/* Badges */}
+        {user.badges && user.badges.length > 0 && (
+          <View style={styles.badgeContainer}>
+            {user.badges.map((badge: string, index: number) => (
+              <View key={index} style={styles.badge}>
+                <Text style={styles.badgeText}>{badge}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Recent Reviews */}
+        {recentReviews.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Reviews</Text>
+            {recentReviews.map((review: Review) => (
+              <View key={review.review_id} style={styles.reviewItem}>
+                <Text style={styles.stars}>
+                  {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                </Text>
+                <Text style={styles.reviewText}>{review.comment}</Text>
+                <Text style={styles.timestamp}>
+                  {new Date(review.created_at).toLocaleString()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 export default ViewUserProfileScreen;
-
 
 const styles = StyleSheet.create({
   container: {
@@ -186,7 +178,6 @@ const styles = StyleSheet.create({
   badgeContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
     marginBottom: 20,
   },
   badge: {
@@ -221,4 +212,8 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 4,
   },
+  safeArea: {
+        flex: 1,
+        backgroundColor: '#121212',
+    },
 });

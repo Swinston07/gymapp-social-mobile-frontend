@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { BASE_URL } from '@env';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Types
 export interface Review {
@@ -17,7 +18,7 @@ export interface ReviewPayload {
 }
 
 const getAuthHeader = async (): Promise<{ Authorization: string }> => {
-  const token = localStorage.getItem('token');
+  const token = await AsyncStorage.getItem('token');
   return { Authorization: `Bearer ${token}` };
 };
 
