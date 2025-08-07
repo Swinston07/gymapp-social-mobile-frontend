@@ -89,6 +89,29 @@ const UserProfileScreen = () => {
                     <Text style={styles.cardText}>Height: {user.feet}'{user.inches}</Text>
                     <Text style={styles.cardText}>Current Weight: {user.current_weight}</Text>
                     <Text style={styles.cardText}>Current Body Fat %: {user.current_body_fat_percentage}%</Text>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('EditProfile', { id: user.id })}
+                        style={styles.linkButton}
+                    >
+                        <Text style={styles.linkButtonText}>Edit Profile</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('PhotoUpload', { id: user.id })}
+                        style={styles.linkButton}
+                    >
+                        <Text style={styles.linkButtonText}>Upload Photo</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('ViewUserProfile', { id: user.id })}
+                        style={styles.linkButton}
+                    >
+                        <Text style={styles.linkButtonText}>View Your Profile</Text>
+                    </TouchableOpacity>
+
+
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -166,5 +189,16 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: '#121212',
-    }
+    },
+    linkButton: {
+        backgroundColor: '#FFD700',
+        padding: 12,
+        borderRadius: 10,
+        marginTop: 20,
+    },
+    linkButtonText: {
+        color: '#121212',
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
 });

@@ -1,26 +1,23 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import type { RootStackParamList } from './src/types'; // Adjust the import path as necessary
-import LoginScreen from './src/screens/Auth/LoginScreen';
-import RegisterScreen from './src/screens/Auth/RegisterScreen';
-import UserProfileScreen from './src/screens/User/UserProfileScreen';
-import OnboardingScreen from './src/screens/Auth/OnboardingScreen';
-// import HomeScreen from './src/screens/HomeScreen'; // You'll add this later
+// App.tsx
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
-
+import React, { useEffect } from 'react';
+import AuthWrapper from './src/navigation/AuthWrapper';
+import { AuthProvider } from './src/AuthContext/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
+  useEffect(() => {
+    // ✅ DEV ONLY: Clear saved login on app launch
+    if (__DEV__) {
+      AsyncStorage.removeItem('user');
+      AsyncStorage.removeItem('token');
+      console.log('[DEV] Cleared stored user/token');
+    }
+  }, []);
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="UserProfile" component={UserProfileScreen} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        {/* <Stack.Screen name="Home" component={HomeScreen} /> */}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <AuthProvider>
+      <AuthWrapper />
+    </AuthProvider>
   );
 }
