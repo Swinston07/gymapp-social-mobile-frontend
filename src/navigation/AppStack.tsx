@@ -8,6 +8,7 @@ import OnboardingScreen from '../screens/Auth/OnboardingScreen';
 import EditProfileScreen from '../screens/User/EditProfileScreen';
 import PhotoUploadScreen from '../screens/User/PhotoUploadScreen';
 import ViewUserProfileScreen from '../screens/User/ViewUserProfileScreen';
+import SetHomeGymScreen from '../screens/User/SetHomeGymScreen';
 import { RootStackParamList } from '../types';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -66,6 +67,11 @@ const AppStack = () => {
         <Stack.Screen 
           name="ViewUserProfile" 
           component={ViewUserProfileScreen} 
+        />
+        <Stack.Screen
+          name="SetHomeGym"
+          component={SetHomeGymScreen}
+          initialParams={{ id: userId }}
         />
 
     </Stack.Navigator>

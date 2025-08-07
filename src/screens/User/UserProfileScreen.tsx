@@ -111,7 +111,12 @@ const UserProfileScreen = () => {
                         <Text style={styles.linkButtonText}>View Your Profile</Text>
                     </TouchableOpacity>
 
-
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('SetHomeGym', { id: user.id })}
+                        style={styles.linkButton}
+                        >
+                        <Text style={styles.linkButtonText}>Set Home Gym</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </SafeAreaView>

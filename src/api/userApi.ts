@@ -42,3 +42,41 @@ export const updateUser = async(id: number, updatedData: any) => {
         throw error;
     }
 };
+
+export const updateHomeGymData = async (userId: number, homeGymData: any) => {
+  try {
+    const response = await axios.put(
+      `${BASE_URL}/users/${userId}/update-location`,
+      homeGymData,
+      {
+        headers: {
+          ...await getAuthHeader(),
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('Error updating home gym:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const getGymSuggestions = async (query: string, lat: number, lon: number) => {
+  try {
+    const response = await axios.get(
+      `https://autosuggest.search.hereapi.com/v1/autosuggest`,
+      {
+        params: {
+          q: query,
+          at: `${lat},${lon}`,
+          apiKey: HERE_API_KEY,
+        },
+      }
+    );
+    return response.data.items;
+  } catch (error) {
+    console.error('Error fetching gym suggestions:', error);
+    throw error;
+  }
+};

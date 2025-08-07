@@ -6,4 +6,5 @@ export type RootStackParamList = {
   EditProfile: { id: number };
   PhotoUpload: { id: number };
   ViewUserProfile: { id: number };
+  SetHomeGym: {id: number};
 };
