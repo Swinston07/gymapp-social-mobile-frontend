@@ -11,6 +11,10 @@ import ViewUserProfileScreen from '../screens/User/ViewUserProfileScreen';
 import SetHomeGymScreen from '../screens/User/SetHomeGymScreen';
 import { RootStackParamList } from '../types';
 import { ActivityIndicator, View } from 'react-native';
+import MatchesScreen from '../screens/User/MatchesScreen';
+import GymBuddiesScreen from '../screens/User/GymBuddiesScreen';
+import ChatScreen from '../screens/User/ChatScreen';
+import ScheduleWorkoutScreen from '../screens/User/ScheduleWorkoutScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -74,6 +78,28 @@ const AppStack = () => {
           initialParams={{ id: userId }}
         />
 
+        <Stack.Screen
+          name="Matches"
+          component={MatchesScreen} // Assuming MatchesScreen is defined elsewhere
+          initialParams={{ id: userId }}
+        />
+
+        <Stack.Screen
+          name="GymBuddies"
+          component={GymBuddiesScreen}
+          initialParams={{ id: userId }}
+        />
+
+        <Stack.Screen 
+          name="Chat"
+          component={ChatScreen}
+        />
+        
+        <Stack.Screen
+          name="ScheduleWorkout"
+          component={ScheduleWorkoutScreen}
+        />
+        
     </Stack.Navigator>
   );
 };
