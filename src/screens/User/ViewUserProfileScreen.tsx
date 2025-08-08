@@ -68,15 +68,18 @@ const ViewUserProfileScreen = () => {
         <Text style={styles.rating}>⭐ Average Rating: {rating ?? 'N/A'}</Text>
 
         {/* Photos */}
-        <FlatList
-          data={photos}
-          keyExtractor={(item, index) => item?.id ? item.id.toString(): index.toString()}
-          numColumns={3}
-          style={styles.photoList}
-          renderItem={({ item }) => (
-            <Image source={{ uri: item.image_url }} style={styles.photo} />
-          )}
-        />
+        <View style={styles.photoList}>
+          <View style={styles.photoGrid}>
+            {photos.map((item, index) => (
+              <Image
+                key={item?.id?.toString() || index.toString()}
+                source={{ uri: item.image_url }}
+                style={styles.photo}
+              />
+            ))}
+          </View>
+        </View>
+
 
         {/* About Me */}
         <View style={styles.section}>
@@ -154,10 +157,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   photo: {
-    width: '30%',
-    aspectRatio: 1,
-    margin: '1.5%',
-    borderRadius: 8,
+      width: 100, // fixed width for testing
+      height: 100,
+      margin: 5,
+      borderRadius: 8,
+      backgroundColor: '#333', // for visibility if image fails
   },
   section: {
     backgroundColor: '#1e1e1e',
@@ -215,5 +219,10 @@ const styles = StyleSheet.create({
   safeArea: {
         flex: 1,
         backgroundColor: '#121212',
+    },
+    photoGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
     },
 });
