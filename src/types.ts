@@ -13,4 +13,7 @@ export type RootStackParamList = {
   ScheduleWorkout: { id: number; buddyId: number };
   ScheduledSessions: { id: number };
   PendingInvites: { id: number };
+  ProgressForm: { id: number };
+  ProgressChart: { id: number };
+  Dashboard: { id: number };
 };

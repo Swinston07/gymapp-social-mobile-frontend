@@ -17,6 +17,9 @@ import ChatScreen from '../screens/User/ChatScreen';
 import ScheduleWorkoutScreen from '../screens/User/ScheduleWorkoutScreen';
 import ScheduledSessionsScreen from '../screens/User/ScheduledSessionsScreen';
 import PendingInvitesScreen from '../screens/User/PendingInvitesScreen';
+import ProgressFormScreen from '../screens/progress/ProgressFormScreen';
+import ProgressChartScreen from '../screens/progress/ProgressChartScreen';
+import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -111,6 +114,24 @@ const AppStack = () => {
         <Stack.Screen
           name="ScheduledSessions"
           component={ScheduledSessionsScreen}
+          initialParams={{ id: userId }}
+        />
+
+        <Stack.Screen
+          name="ProgressForm"
+          component={ProgressFormScreen}
+          initialParams={{ id: userId }}
+        />
+
+        <Stack.Screen
+          name="ProgressChart"
+          component={ProgressChartScreen}
+          initialParams={{ id: userId }}
+        />
+
+        <Stack.Screen
+          name="Dashboard"
+          component={DashboardScreen}
           initialParams={{ id: userId }}
         />
     </Stack.Navigator>

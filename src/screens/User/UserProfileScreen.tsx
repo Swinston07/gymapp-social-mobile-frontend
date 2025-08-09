@@ -145,6 +145,13 @@ const UserProfileScreen = () => {
                     >
                         <Text style={styles.linkButtonText}>Scheduled Sessions</Text>
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('Dashboard', { id: user.id })}
+                        style={styles.linkButton}
+                    >
+                        <Text style={styles.linkButtonText}>View Dashboard</Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </SafeAreaView>
