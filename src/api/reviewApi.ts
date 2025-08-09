@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Types
 export interface Review {
+  session_id: number;
   review_id: number;
   rating: number;
   comment: string;
@@ -13,8 +14,10 @@ export interface Review {
 }
 
 export interface ReviewPayload {
+  session_id: number;
+  reviewed_id: number;
   rating: number;
-  comment: string;
+  comment?: string;
 }
 
 const getAuthHeader = async (): Promise<{ Authorization: string }> => {

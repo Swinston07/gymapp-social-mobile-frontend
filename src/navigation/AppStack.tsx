@@ -15,6 +15,8 @@ import MatchesScreen from '../screens/User/MatchesScreen';
 import GymBuddiesScreen from '../screens/User/GymBuddiesScreen';
 import ChatScreen from '../screens/User/ChatScreen';
 import ScheduleWorkoutScreen from '../screens/User/ScheduleWorkoutScreen';
+import ScheduledSessionsScreen from '../screens/User/ScheduledSessionsScreen';
+import PendingInvitesScreen from '../screens/User/PendingInvitesScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -99,7 +101,18 @@ const AppStack = () => {
           name="ScheduleWorkout"
           component={ScheduleWorkoutScreen}
         />
-        
+
+        <Stack.Screen
+          name="PendingInvites"
+          component={PendingInvitesScreen}
+          initialParams={{ id: userId }}
+        />
+
+        <Stack.Screen
+          name="ScheduledSessions"
+          component={ScheduledSessionsScreen}
+          initialParams={{ id: userId }}
+        />
     </Stack.Navigator>
   );
 };

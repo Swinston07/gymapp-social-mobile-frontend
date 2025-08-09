@@ -11,4 +11,6 @@ export type RootStackParamList = {
   GymBuddies: { id: number };
   Chat: { id: number; buddyId: number };
   ScheduleWorkout: { id: number; buddyId: number };
+  ScheduledSessions: { id: number };
+  PendingInvites: { id: number };
 };
