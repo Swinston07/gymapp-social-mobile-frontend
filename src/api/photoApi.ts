@@ -27,7 +27,7 @@ export const getUserPhotos = async (userId: number) => {
 
 export const deletePhoto = async (userId: number, photoId: number) => {
     const headers = await getAuthHeader();
-    const response = await axios.delete(`${BASE_URL}/users/${userId}/photos/${photoId}`,
+    const response = await axios.delete(`${BASE_URL}/photos/${photoId}`,
         { headers }
     );
     return response.data;

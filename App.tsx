@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import AuthWrapper from './src/navigation/AuthWrapper';
 import { AuthProvider } from './src/AuthContext/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
@@ -16,8 +17,10 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AuthWrapper />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AuthWrapper />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

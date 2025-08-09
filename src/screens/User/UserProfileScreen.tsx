@@ -91,6 +91,13 @@ const UserProfileScreen = () => {
                     <Text style={styles.cardText}>Current Body Fat %: {user.current_body_fat_percentage}%</Text>
 
                     <TouchableOpacity
+                        onPress={() => navigation.navigate('ViewUserProfile', { id: user.id })}
+                        style={styles.linkButton}
+                    >
+                        <Text style={styles.linkButtonText}>View Your Profile</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         onPress={() => navigation.navigate('EditProfile', { id: user.id })}
                         style={styles.linkButton}
                     >
@@ -105,13 +112,6 @@ const UserProfileScreen = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('ViewUserProfile', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>View Your Profile</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
                         onPress={() => navigation.navigate('SetHomeGym', { id: user.id })}
                         style={styles.linkButton}
                         >
@@ -123,34 +123,6 @@ const UserProfileScreen = () => {
                         style={styles.linkButton}
                     >
                         <Text style={styles.linkButtonText}>Find Gym Buddies</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('GymBuddies', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                            <Text style={styles.linkButtonText}>My Gym Buddies</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('PendingInvites', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>Pending Invites</Text>
-                    </TouchableOpacity>
- 
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('ScheduledSessions', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>Scheduled Sessions</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Dashboard', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>View Dashboard</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
