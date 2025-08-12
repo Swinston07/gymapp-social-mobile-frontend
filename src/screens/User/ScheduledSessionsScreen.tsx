@@ -1,8 +1,5 @@
-// src/screens/User/ScheduledSessionsScreen.tsx
-import React, { useEffect, useState } from 'react';
-import {
-  SafeAreaView,
-} from 'react-native-safe-area-context';
+import React, { useEffect, useState, useCallback } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -12,12 +9,10 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
-import { RouteProp, useRoute } from '@react-navigation/native';
-import {
-  getSessionsByStatus,
-  updateSessionStatus,
-} from '../../api/sessionApi';
+import { RouteProp, useRoute, useFocusEffect } from '@react-navigation/native';
+import { getSessionsByStatus, updateSessionStatus } from '../../api/sessionApi';
 import { createReview, getReviewsWrittenByUser } from '../../api/reviewApi';
+import { markSectionSeen } from '../../api/unreadApi';
 import { RootStackParamList } from '../../types';
 
 type ScheduledSessionsRouteProp = RouteProp<RootStackParamList, 'ScheduledSessions'>;
@@ -50,6 +45,17 @@ const ScheduledSessionsScreen = () => {
   const [reviewData, setReviewData] = useState<ReviewDraft>({ rating: null, comment: '' });
   const [reviewedSessionIds, setReviewedSessionIds] = useState<Set<number>>(new Set());
 
+  const fetchScheduledSessions = useCallback(async () => {
+    try {
+      const scheduled = await getSessionsByStatus(Number(currentUserId), 'SCHEDULED');
+      const completed = await getSessionsByStatus(Number(currentUserId), 'COMPLETED');
+      setSessions([...(scheduled || []), ...(completed || [])]);
+    } catch (err) {
+      console.error('Failed to fetch sessions', err);
+      setSessions([]);
+    }
+  }, [currentUserId]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -66,24 +72,20 @@ const ScheduledSessionsScreen = () => {
       }
     };
     load();
-  }, [currentUserId]);
+  }, [currentUserId, fetchScheduledSessions]);
 
-  const fetchScheduledSessions = async () => {
-    try {
-      const scheduled = await getSessionsByStatus(Number(currentUserId), 'SCHEDULED');
-      const completed = await getSessionsByStatus(Number(currentUserId), 'COMPLETED');
-      setSessions([...(scheduled || []), ...(completed || [])]);
-    } catch (err) {
-      console.error('Failed to fetch sessions', err);
-      setSessions([]);
-    }
-  };
+  // 👇 Clear the "sessions" dot whenever this screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      markSectionSeen(Number(currentUserId), 'sessions').catch(() => {});
+      fetchScheduledSessions();
+    }, [currentUserId, fetchScheduledSessions])
+  );
 
   const handleComplete = async (sessionId: number) => {
     try {
       const ok = await updateSessionStatus(sessionId, 'COMPLETED');
       if (ok) {
-        // Update locally
         setSessions(prev =>
           prev.map(s => (s.session_id === sessionId ? { ...s, status: 'COMPLETED' } : s))
         );

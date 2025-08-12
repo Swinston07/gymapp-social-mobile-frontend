@@ -1,4 +1,3 @@
-// src/screens/User/PendingInvitesScreen.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { RouteProp, useFocusEffect, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { RootStackParamList } from '../../types';
 import { getSessionsByStatus, updateSessionStatus } from '../../api/sessionApi';
+import { markSectionSeen } from '../../api/unreadApi';
 
 type PendingInvitesRouteProp = RouteProp<RootStackParamList, 'PendingInvites'>;
 
@@ -56,11 +56,12 @@ const PendingInvitesScreen = () => {
     loadPending();
   }, [loadPending]);
 
+  // 👇 Clear the "invites" dot whenever this screen gains focus
   useFocusEffect(
     useCallback(() => {
-      // refresh when screen regains focus
+      markSectionSeen(Number(currentUserId), 'invites').catch(() => {});
       loadPending();
-    }, [loadPending])
+    }, [currentUserId, loadPending])
   );
 
   const onRefresh = useCallback(() => {

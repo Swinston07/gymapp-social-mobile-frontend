@@ -1,5 +1,5 @@
 // src/components/NavMenu.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,23 +9,34 @@ import {
   Easing,
   Pressable,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../AuthContext/AuthContext'; // <— import useAuth
+import { useAuth } from '../AuthContext/AuthContext';
+import { getUnreadSummary, markSectionSeen, UnreadSummary } from '../api/unreadApi';
 
-type Props = {
-  userId: number;
-};
+type Props = { userId: number; };
 
 const NavMenu: React.FC<Props> = ({ userId }) => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth(); // <— get logout
+  const { logout } = useAuth();
 
   const [open, setOpen] = useState(false);
-  const slideX = useRef(new Animated.Value(300)).current; // hidden to the right
+  const slideX = useRef(new Animated.Value(300)).current;
 
+  const [summary, setSummary] = useState<UnreadSummary>({
+    buddies: 0, invites: 0, sessions: 0, reviews: 0, messages: 0,
+  });
+
+  const loadSummary = useCallback(async () => {
+    try {
+      const s = await getUnreadSummary(userId);
+      setSummary(s);
+    } catch { /* ignore */ }
+  }, [userId]);
+
+  // Refresh when drawer opens
   useEffect(() => {
     Animated.timing(slideX, {
       toValue: open ? 0 : 300,
@@ -33,18 +44,25 @@ const NavMenu: React.FC<Props> = ({ userId }) => {
       useNativeDriver: true,
       easing: Easing.out(Easing.cubic),
     }).start();
-  }, [open, slideX]);
+    if (open) loadSummary();
+  }, [open, slideX, loadSummary]);
 
-  const go = (screen: string, params?: any) => {
+  // Also refresh whenever the screen regains focus
+  useFocusEffect(useCallback(() => { loadSummary(); }, [loadSummary]));
+
+  const go = async (screen: string, params?: any, sectionToMark?: keyof UnreadSummary) => {
     setOpen(false);
-    requestAnimationFrame(() => {
-      navigation.navigate(screen as never, params as never);
-    });
+    // Clear dot server-side (best effort) and locally optimistic
+    if (sectionToMark) {
+      try { await markSectionSeen(userId, sectionToMark); } catch {}
+      setSummary(s => ({ ...s, [sectionToMark]: 0 }));
+    }
+    requestAnimationFrame(() => navigation.navigate(screen as never, params as never));
   };
 
   const handleLogout = async () => {
     setOpen(false);
-    await logout(); // clears user+token and AuthWrapper renders AuthStack -> Login
+    await logout();
   };
 
   const top = (insets.top ?? 0) + 8;
@@ -52,7 +70,6 @@ const NavMenu: React.FC<Props> = ({ userId }) => {
 
   return (
     <>
-      {/* Floating hamburger button — TOP RIGHT, safe-area aware */}
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel="Open navigation menu"
@@ -64,17 +81,12 @@ const NavMenu: React.FC<Props> = ({ userId }) => {
         <Feather name="menu" size={22} color="#121212" />
       </TouchableOpacity>
 
-      {/* Backdrop */}
       {open && <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />}
 
-      {/* Slide-in panel (pad for safe area at top) */}
       <Animated.View
         style={[
           styles.panel,
-          {
-            transform: [{ translateX: slideX }],
-            paddingTop: (insets.top ?? 0) + 14,
-          },
+          { transform: [{ translateX: slideX }], paddingTop: (insets.top ?? 0) + 14 },
         ]}
       >
         <View style={styles.panelHeader}>
@@ -87,9 +99,39 @@ const NavMenu: React.FC<Props> = ({ userId }) => {
         <View style={styles.menu}>
           <MenuItem label="Home" onPress={() => go('UserProfile', { id: userId })} />
           <MenuItem label="Dashboard" onPress={() => go('Dashboard', { id: userId })} />
-          <MenuItem label="Gym Buddies" onPress={() => go('GymBuddies', { id: userId })} />
-          <MenuItem label="Scheduled Sessions" onPress={() => go('ScheduledSessions', { id: userId })} />
-          <MenuItem label="Pending Invites" onPress={() => go('PendingInvites', { id: userId })} />
+
+          <MenuItem
+            label="Gym Buddies"
+            showDot={summary.buddies > 0}
+            onPress={() => go('GymBuddies', { id: userId }, 'buddies')}
+          />
+
+          <MenuItem
+            label="Scheduled Sessions"
+            showDot={summary.sessions > 0}
+            onPress={() => go('ScheduledSessions', { id: userId }, 'sessions')}
+          />
+
+          <MenuItem
+            label="Pending Invites"
+            showDot={summary.invites > 0}
+            onPress={() => go('PendingInvites', { id: userId }, 'invites')}
+          />
+
+          {/* If/when you add a Reviews screen */}
+          {/* <MenuItem
+            label="Reviews"
+            showDot={summary.reviews > 0}
+            onPress={() => go('Reviews', { id: userId }, 'reviews')}
+          /> */}
+
+          {/* If you have a Messages screen, show global unread here */}
+          {/* <MenuItem
+            label="Messages"
+            showDot={summary.messages > 0}
+            onPress={() => go('Messages', { id: userId }, 'messages')}
+          /> */}
+
           <MenuItem label="Onboarding" onPress={() => go('Onboarding', { id: userId })} />
           <MenuItem label="Log out" destructive onPress={handleLogout} />
         </View>
@@ -102,13 +144,16 @@ const MenuItem = ({
   label,
   onPress,
   destructive = false,
+  showDot = false,
 }: {
   label: string;
   onPress: () => void;
   destructive?: boolean;
+  showDot?: boolean;
 }) => (
   <TouchableOpacity onPress={onPress} style={styles.item}>
     <Text style={[styles.itemText, destructive && styles.destructive]}>{label}</Text>
+    {showDot && <View style={styles.dot} />}
   </TouchableOpacity>
 );
 
@@ -128,51 +173,28 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     zIndex: 50,
   },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    zIndex: 40,
-  },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 40 },
   panel: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 260,
-    backgroundColor: '#181818',
-    borderLeftWidth: 1,
-    borderLeftColor: '#2a2a2a',
-    zIndex: 50,
+    position: 'absolute', right: 0, top: 0, bottom: 0, width: 260,
+    backgroundColor: '#181818', borderLeftWidth: 1, borderLeftColor: '#2a2a2a', zIndex: 50,
   },
   panelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12,
+    justifyContent: 'space-between', marginBottom: 8,
   },
   brand: { color: '#FFD700', fontWeight: '700', fontSize: 18 },
-  closeBtn: {
-    padding: 8,
-    marginRight: -4,
-  },
-  menu: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
+  closeBtn: { padding: 8, marginRight: -4 },
+  menu: { paddingHorizontal: 8, paddingVertical: 4 },
   item: {
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    marginVertical: 2,
+    paddingVertical: 12, paddingHorizontal: 10, borderRadius: 10, marginVertical: 2,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  itemText: {
-    color: '#e5e5e5',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  destructive: {
-    color: '#EF4444',
+  itemText: { color: '#e5e5e5', fontSize: 16, fontWeight: '600' },
+  destructive: { color: '#EF4444' },
+  // ◽ White dot
+  dot: {
+    width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff',
+    marginLeft: 8,
   },
 });
 
