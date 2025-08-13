@@ -1,4 +1,3 @@
-// src/screens/User/GymBuddiesScreen.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
@@ -6,7 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -37,18 +36,8 @@ const GymBuddiesScreen = () => {
         getGymBuddies(userId),
         getUnreadByPartner(userId).catch(() => ({} as Record<number, number>)),
       ]);
-
-      setBuddies(buddiesRes);
-
-      const hasUnread = unreadMap && Object.keys(unreadMap).length > 0;
-
-      // TEMP (for visual testing): if backend returns no unread, force a dot on the first buddy.
-      const fallback: Record<number, number> = {};
-      if (!hasUnread && buddiesRes?.[0]) {
-        fallback[buddiesRes[0].id] = 1;
-      }
-
-      setUnreadByPartner(hasUnread ? unreadMap : fallback);
+      setBuddies(buddiesRes || []);
+      setUnreadByPartner(unreadMap || {});
     } catch (err) {
       console.error('GymBuddies load failed', err);
       setBuddies([]);
@@ -58,12 +47,11 @@ const GymBuddiesScreen = () => {
     }
   }, [userId]);
 
-  // initial load
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // mark section seen + refresh when focused
+  // When this screen is focused, refresh lists and clear the "buddies" section badge (if any)
   useFocusEffect(
     useCallback(() => {
       markSectionSeen(userId, 'buddies').catch(() => {});
@@ -72,7 +60,7 @@ const GymBuddiesScreen = () => {
   );
 
   const handleChatClick = (buddyId: number) => {
-    // optimistic clear for this buddy’s dot
+    // Optimistically clear this buddy’s unread dot locally
     setUnreadByPartner(prev => ({ ...prev, [buddyId]: 0 }));
     navigation.navigate('Chat', { id: userId, buddyId });
   };
@@ -154,8 +142,12 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: 'bold', color: '#FFD700', marginBottom: 16 },
   noBuddies: { color: '#ccc', textAlign: 'center', marginTop: 20 },
   card: {
-    backgroundColor: '#1e1e1e', padding: 16, borderRadius: 10,
-    marginBottom: 16, borderColor: '#333', borderWidth: 1,
+    backgroundColor: '#1e1e1e',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderColor: '#333',
+    borderWidth: 1,
   },
   name: { fontSize: 18, color: '#fff', fontWeight: 'bold' },
   username: { color: '#aaa', marginBottom: 8 },
@@ -164,11 +156,15 @@ const styles = StyleSheet.create({
   secondaryButton: { backgroundColor: '#444', padding: 10, borderRadius: 8 },
   buttonText: { color: '#121212', fontWeight: 'bold' },
   backButton: {
-    backgroundColor: '#FFD700', padding: 14, borderRadius: 10,
-    marginTop: 20, alignSelf: 'center', width: '100%',
+    backgroundColor: '#FFD700',
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 20,
+    alignSelf: 'center',
+    width: '100%',
   },
   backButtonText: { color: '#121212', fontWeight: 'bold', textAlign: 'center', fontSize: 16 },
-  // tiny per-buddy unread dot rendered inline to the right of "Chat"
+  // Tiny per-buddy unread dot shown only when unread > 0
   inlineDot: {
     width: 8,
     height: 8,

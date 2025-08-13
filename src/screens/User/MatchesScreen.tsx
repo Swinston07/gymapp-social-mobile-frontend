@@ -1,6 +1,6 @@
 // src/screens/User/MatchesScreen.tsx
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,12 @@ import {
 } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Picker } from '@react-native-picker/picker';
 
-import { getFilteredMatches } from '../../api/userApi';
+import { getFilteredMatches, getUserById } from '../../api/userApi';
 import { getAverageRating } from '../../api/reviewApi';
 import { getUserPhotos } from '../../api/photoApi';
 import { sendWorkoutInvite } from '../../api/workoutInviteApi';
@@ -108,9 +109,9 @@ const MatchesScreen = () => {
     role: '',
     min_age: '',
     max_age: '',
-    experience_level: '',
-    lifestyle: '',
-    consistency: '',
+    experience_level: '', // ENUM values (BEGINNER, EXPERIENCED, ADVANCED, TRAINER, PROFESSIONAL)
+    lifestyle: '',         // ENUM values (SEDENTARY, ACTIVE, VERY_ACTIVE, ATHLETE)
+    consistency: '',       // ENUM values (ONCE_A_WEEK, TWICE_A_WEEK, THREE_PLUS_WEEK, RANDOM)
   });
 
   // Swiper control (single source of truth)
@@ -122,13 +123,19 @@ const MatchesScreen = () => {
   const fetchMatches = async () => {
     try {
       setLoading(true);
-      const allMatches: User[] = await getFilteredMatches(userId, filters);
+
+      // Optionally strip empty filters so backend only receives selected ones
+      const payload = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== '' && v != null)
+      ) as any;
+
+      const allMatches: User[] = await getFilteredMatches(userId, payload);
       const hidden = JSON.parse((await AsyncStorage.getItem(getHiddenKey())) || '[]') as number[];
       const visibleMatches = allMatches.filter((u) => !hidden.includes(u.id));
       setMatches(visibleMatches);
       setCurrentIndex(0); // reset deck to start
 
-      // Pull photos/ratings (sequential for simplicity; you can batch if needed)
+      // Pull photos/ratings
       const photoMap: Record<number, string> = {};
       const ratingMap: Record<number, string> = {};
 
@@ -164,7 +171,6 @@ const MatchesScreen = () => {
     }
   };
 
-  // Side-effects live here (not inside card buttons)
   const onSwipedRight = async (i: number) => {
     const user = matches[i];
     if (!user) return;
@@ -189,10 +195,43 @@ const MatchesScreen = () => {
     }
   };
 
+  // 🔔 Prompt to set Home Gym if missing
+  const checkHomeGymAndPrompt = useCallback(async () => {
+    try {
+      const me: any = await getUserById(userId);
+      const hasHomeGym =
+        (me?.home_gym_id != null && me.home_gym_id !== 0) ||
+        (me?.homeGymId != null && me.homeGymId !== 0) ||
+        !!me?.home_gym ||
+        !!me?.homeGym ||
+        (me?.home_gym_lat != null && me?.home_gym_lng != null);
+
+      if (!hasHomeGym) {
+        Alert.alert(
+          'Set your home gym',
+          'To get nearby matches, please set your home gym.',
+          [
+            { text: 'Later', style: 'cancel' },
+            { text: 'Set Now', onPress: () => navigation.navigate('Onboarding', { id: userId }) },
+          ]
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }, [userId, navigation]);
+
   useEffect(() => {
     fetchMatches();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Check for Home Gym on focus
+  useFocusEffect(
+    useCallback(() => {
+      checkHomeGymAndPrompt();
+    }, [checkHomeGymAndPrompt])
+  );
 
   if (loading) {
     return <ActivityIndicator size="large" style={{ marginTop: 100 }} />;
@@ -215,6 +254,7 @@ const MatchesScreen = () => {
                   <ScrollView>
                     <Text style={styles.modalTitle}>Filter Matches</Text>
 
+                    {/* Role (free text or wire to your own enum if you have one) */}
                     <TextInput
                       placeholder="Role (e.g., trainer, client)"
                       style={styles.input}
@@ -222,6 +262,8 @@ const MatchesScreen = () => {
                       value={filters.role}
                       onChangeText={(text) => setFilters({ ...filters, role: text })}
                     />
+
+                    {/* Min/Max Age */}
                     <TextInput
                       placeholder="Min Age"
                       keyboardType="numeric"
@@ -238,29 +280,64 @@ const MatchesScreen = () => {
                       value={filters.max_age}
                       onChangeText={(text) => setFilters({ ...filters, max_age: text })}
                     />
-                    <TextInput
-                      placeholder="Experience Level"
-                      style={styles.input}
-                      placeholderTextColor="#999"
-                      value={filters.experience_level}
-                      onChangeText={(text) =>
-                        setFilters({ ...filters, experience_level: text })
-                      }
-                    />
-                    <TextInput
-                      placeholder="Lifestyle"
-                      style={styles.input}
-                      placeholderTextColor="#999"
-                      value={filters.lifestyle}
-                      onChangeText={(text) => setFilters({ ...filters, lifestyle: text })}
-                    />
-                    <TextInput
-                      placeholder="Consistency"
-                      style={styles.input}
-                      placeholderTextColor="#999"
-                      value={filters.consistency}
-                      onChangeText={(text) => setFilters({ ...filters, consistency: text })}
-                    />
+
+                    {/* Experience Level (ENUM - matches Onboarding) */}
+                    <Text style={styles.pickerLabel}>Experience Level</Text>
+                    <View style={styles.pickerWrap}>
+                      <Picker
+                        selectedValue={filters.experience_level}
+                        onValueChange={(value: string) =>
+                          setFilters((prev) => ({ ...prev, experience_level: value }))
+                        }
+                        style={styles.picker}
+                        dropdownIconColor="#FFD700"
+                      >
+                        <Picker.Item label="Any" value="" />
+                        <Picker.Item label="Beginner" value="BEGINNER" />
+                        <Picker.Item label="Experienced" value="EXPERIENCED" />
+                        <Picker.Item label="Advanced" value="ADVANCED" />
+                        <Picker.Item label="Trainer" value="TRAINER" />
+                        <Picker.Item label="Professional" value="PROFESSIONAL" />
+                      </Picker>
+                    </View>
+
+                    {/* Lifestyle (ENUM - matches Onboarding) */}
+                    <Text style={styles.pickerLabel}>Lifestyle</Text>
+                    <View style={styles.pickerWrap}>
+                      <Picker
+                        selectedValue={filters.lifestyle}
+                        onValueChange={(value: string) =>
+                          setFilters((prev) => ({ ...prev, lifestyle: value }))
+                        }
+                        style={styles.picker}
+                        dropdownIconColor="#FFD700"
+                      >
+                        <Picker.Item label="Any" value="" />
+                        <Picker.Item label="Sedentary" value="SEDENTARY" />
+                        <Picker.Item label="Active" value="ACTIVE" />
+                        <Picker.Item label="Very Active" value="VERY_ACTIVE" />
+                        <Picker.Item label="Athlete" value="ATHLETE" />
+                      </Picker>
+                    </View>
+
+                    {/* Consistency (ENUM - matches Onboarding) */}
+                    <Text style={styles.pickerLabel}>Consistency</Text>
+                    <View style={styles.pickerWrap}>
+                      <Picker
+                        selectedValue={filters.consistency}
+                        onValueChange={(value: string) =>
+                          setFilters((prev) => ({ ...prev, consistency: value }))
+                        }
+                        style={styles.picker}
+                        dropdownIconColor="#FFD700"
+                      >
+                        <Picker.Item label="Any" value="" />
+                        <Picker.Item label="Once/week" value="ONCE_A_WEEK" />
+                        <Picker.Item label="Twice/week" value="TWICE_A_WEEK" />
+                        <Picker.Item label="Three+/week" value="THREE_PLUS_WEEK" />
+                        <Picker.Item label="Random" value="RANDOM" />
+                      </Picker>
+                    </View>
 
                     <TouchableOpacity
                       onPress={() => {
@@ -280,7 +357,7 @@ const MatchesScreen = () => {
               </View>
             </Modal>
 
-            {/* Open Filters Button */}
+            {/* Open Filters Button — LEFT so it doesn't collide with hamburger */}
             <TouchableOpacity
               onPress={() => setFilterModalVisible(true)}
               style={styles.filterButton}
@@ -299,7 +376,6 @@ const MatchesScreen = () => {
                     user={user}
                     photoUrl={photos[user.id]}
                     rating={ratings[user.id]}
-                    // Buttons only trigger swipe; effects handled in onSwipedLeft/Right
                     onInvite={() => swiperRef.current?.swipeRight()}
                     onDismiss={() => swiperRef.current?.swipeLeft()}
                     onViewProfile={() =>
@@ -314,7 +390,7 @@ const MatchesScreen = () => {
               }
               onSwipedRight={onSwipedRight}
               onSwipedLeft={onSwipedLeft}
-              onSwiped={(i) => setCurrentIndex(i + 1)} // extra safety
+              onSwiped={(i) => setCurrentIndex(i + 1)}
               backgroundColor="transparent"
               stackSize={3}
               verticalSwipe={false}
@@ -405,10 +481,11 @@ const styles = StyleSheet.create({
   },
   applyButtonText: { color: '#121212', fontWeight: 'bold' },
   cancelText: { color: '#ccc', textAlign: 'center', marginTop: 6 },
+  // ⬅️ moved to the left to avoid the hamburger on the right
   filterButton: {
     position: 'absolute',
     top: 20,
-    right: 20,
+    left: 20,
     backgroundColor: '#FFD700',
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -416,4 +493,21 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   filterButtonText: { color: '#121212', fontWeight: 'bold' },
+
+  // Picker styling
+  pickerLabel: {
+    color: '#FFD700',
+    fontWeight: 'bold',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  pickerWrap: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  picker: {
+    color: '#fff',
+    width: '100%',
+  },
 });
