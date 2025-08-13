@@ -254,15 +254,6 @@ const MatchesScreen = () => {
                   <ScrollView>
                     <Text style={styles.modalTitle}>Filter Matches</Text>
 
-                    {/* Role (free text or wire to your own enum if you have one) */}
-                    <TextInput
-                      placeholder="Role (e.g., trainer, client)"
-                      style={styles.input}
-                      placeholderTextColor="#999"
-                      value={filters.role}
-                      onChangeText={(text) => setFilters({ ...filters, role: text })}
-                    />
-
                     {/* Min/Max Age */}
                     <TextInput
                       placeholder="Min Age"
