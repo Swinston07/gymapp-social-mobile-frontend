@@ -212,7 +212,7 @@ const MatchesScreen = () => {
           'To get nearby matches, please set your home gym.',
           [
             { text: 'Later', style: 'cancel' },
-            { text: 'Set Now', onPress: () => navigation.navigate('Onboarding', { id: userId }) },
+            { text: 'Set Now', onPress: () => navigation.navigate('SetHomeGym', { id: userId }) },
           ]
         );
       }
