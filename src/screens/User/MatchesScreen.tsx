@@ -392,7 +392,7 @@ const MatchesScreen = () => {
               onPress={() => navigation.navigate('UserProfile', { id: userId })}
               style={styles.backButton}
             >
-              <Text style={styles.backButtonText}>Back to Profile</Text>
+              <Text style={styles.backButtonText}>Back to Home</Text>
             </TouchableOpacity>
           </>
         ) : (

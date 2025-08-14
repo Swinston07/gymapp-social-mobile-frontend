@@ -162,7 +162,7 @@ const SetHomeGymScreen = () => {
                 style={styles.backButton}
                 onPress={() => navigation.navigate('UserProfile', { id: userId })}
               >
-                <Text style={styles.backButtonText}>⬅ Back to Profile</Text>
+                <Text style={styles.backButtonText}>⬅ Back to Home</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

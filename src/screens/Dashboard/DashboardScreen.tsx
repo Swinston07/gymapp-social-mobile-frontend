@@ -172,7 +172,7 @@ const DashboardScreen = () => {
                 style={styles.navButton}
                 onPress={() => navigation.navigate('UserProfile', { id })}
             >
-                <Text style={styles.navButtonText}>⬅ Back to Profile</Text>
+                <Text style={styles.navButtonText}>⬅ Back to Home</Text>
             </TouchableOpacity>
         </View>
       </View>

@@ -107,7 +107,7 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.backLink}>Back to Profile</Text>
+        <Text style={styles.backLink}>Back to Home</Text>
       </TouchableOpacity>
 
       {imageUri && (
