@@ -87,9 +87,7 @@ const UserProfileScreen = () => {
                     <Text style={styles.cardText}>Start Weight: {user.start_weight}</Text>
                     <Text style={styles.cardText}>Start Body Fat %: {user.start_body_fat_percentage}%</Text>
                     <Text style={styles.cardText}>Height: {user.feet}'{user.inches}</Text>
-                    <Text style={styles.cardText}>Current Weight: {user.current_weight}</Text>
-                    <Text style={styles.cardText}>Current Body Fat %: {user.current_body_fat_percentage}%</Text>
-
+                    
                     <TouchableOpacity
                         onPress={() => navigation.navigate('ViewUserProfile', { id: user.id })}
                         style={styles.linkButton}

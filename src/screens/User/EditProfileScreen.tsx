@@ -110,20 +110,6 @@ const EditProfileScreen = () => {
           keyboardType="numeric"
         />
         <TextInput
-          placeholder="Current Weight (lbs)"
-          style={styles.input}
-          value={String(formData.current_weight)}
-          onChangeText={(text) => handleChange('current_weight', text)}
-          keyboardType="numeric"
-        />
-        <TextInput
-          placeholder="Current Body Fat %"
-          style={styles.input}
-          value={String(formData.current_body_fat_percentage)}
-          onChangeText={(text) => handleChange('current_body_fat_percentage', text)}
-          keyboardType="numeric"
-        />
-        <TextInput
           placeholder="About Me"
           style={[styles.input, { height: 80 }]}
           value={formData.about_me}
