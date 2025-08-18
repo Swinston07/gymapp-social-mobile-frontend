@@ -133,6 +133,11 @@ const NavMenu: React.FC<Props> = ({ userId }) => {
           /> */}
 
           <MenuItem label="Onboarding" onPress={() => go('Onboarding', { id: userId })} />
+          <MenuItem
+            label="Delete account"
+            destructive
+            onPress={() => go('DeleteAccount', { id: userId })}
+          />
           <MenuItem label="Log out" destructive onPress={handleLogout} />
         </View>
       </Animated.View>

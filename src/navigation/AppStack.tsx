@@ -20,6 +20,7 @@ import PendingInvitesScreen from '../screens/User/PendingInvitesScreen';
 import ProgressFormScreen from '../screens/progress/ProgressFormScreen';
 import ProgressChartScreen from '../screens/progress/ProgressChartScreen';
 import DashboardScreen from '../screens/Dashboard/DashboardScreen';
+import DeleteAccountScreen from '../screens/User/DeleteAccountScreen';
 import NavMenu from './NavMenu';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -135,6 +136,11 @@ const AppStack = () => {
             name="Dashboard"
             component={DashboardScreen}
             initialParams={{ id: userId }}
+          />
+
+          <Stack.Screen
+            name="DeleteAccount"
+            component={DeleteAccountScreen}
           />
       </Stack.Navigator>
       {/* Show hamburger only when logged in */}

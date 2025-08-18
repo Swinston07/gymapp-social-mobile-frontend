@@ -8,13 +8,16 @@ const getAuthHeader = async () => {
 };
 
 export const uploadPhoto = async (userId: number, formData: FormData) => {
-    const headers = await getAuthHeader();
-    const response = await axios.post(`${BASE_URL}/users/${userId}/photos`, 
-        formData,
-        { headers }
-    )
-
-    return response.data;
+  const headers = await getAuthHeader();
+  try {
+    const res = await axios.post(`${BASE_URL}/users/${userId}/photos`, formData, { headers });
+    return res.data;
+  } catch (err: any) {
+    if (err.response?.status === 409) {
+      throw new Error('MAX_PHOTOS_REACHED');
+    }
+    throw err;
+  }
 };
 
 export const getUserPhotos = async (userId: number) => {

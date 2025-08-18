@@ -1,5 +1,5 @@
 // src/screens/User/PhotoUploadScreen.tsx
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,16 +11,16 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types';
-import { uploadPhoto } from '../../api/photoApi';
+import { getUserPhotos, uploadPhoto } from '../../api/photoApi';
 
 interface Props {
   route: { params: { id: number } };
 }
 
+const MAX_PHOTOS = 6;
 // Choose one canonical aspect for profile/card images
 const CROPPED_ASPECT: [number, number] = [4, 5];
 const PREVIEW_WIDTH = 1080; // resize width for consistent uploads
@@ -31,17 +31,45 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [loadingCount, setLoadingCount] = useState(true);
+  const [photoCount, setPhotoCount] = useState(0);
   const [message, setMessage] = useState('');
 
+  // Fetch current photo count
+  const fetchCount = useCallback(async () => {
+    try {
+      setLoadingCount(true);
+      const photos = await getUserPhotos(userId);
+      setPhotoCount(Array.isArray(photos) ? photos.length : 0);
+    } catch {
+      // If this fails, we’ll still let the backend enforce the limit
+    } finally {
+      setLoadingCount(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    fetchCount();
+  }, [fetchCount]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCount();
+    }, [fetchCount])
+  );
+
   const pickAndCrop = async () => {
-    // Permission (iOS shows system sheet if not granted; Android needs this)
+    if (photoCount >= MAX_PHOTOS) {
+      Alert.alert('Limit reached', `You can upload at most ${MAX_PHOTOS} photos.`);
+      return;
+    }
+
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!granted) {
       Alert.alert('Permission required', 'Allow photo library access to pick an image.');
       return;
     }
 
-    // System crop UI with a fixed aspect
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -67,6 +95,10 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
 
   const cropAndUpload = async () => {
     if (!imageUri) return;
+    if (photoCount >= MAX_PHOTOS) {
+      Alert.alert('Limit reached', `You can upload at most ${MAX_PHOTOS} photos.`);
+      return;
+    }
 
     try {
       setUploading(true);
@@ -78,31 +110,47 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
       const formData = new FormData();
       formData.append('image', file);
 
-      // If your uploadPhoto already attaches auth header, no need to read token here.
-      // (Keeping in case your API needs it internally.)
-      const _token = await AsyncStorage.getItem('token');
-
       await uploadPhoto(userId, formData);
 
       setMessage('Upload successful!');
-      // Go back to the profile and show the new image
+      setPhotoCount(c => Math.min(MAX_PHOTOS, c + 1));
+      setImageUri(null);
+
+      // Navigate back to the profile (optional). If you prefer to stay, remove this line.
       navigation.navigate('UserProfile', { id: userId });
-    } catch (err) {
-      console.error('Upload failed:', err);
+    } catch (err: any) {
+      // If you updated photoApi.ts to throw 'MAX_PHOTOS_REACHED' on 409, this catches it:
+      if (err?.message === 'MAX_PHOTOS_REACHED' || err?.response?.status === 409) {
+        setPhotoCount(MAX_PHOTOS);
+        Alert.alert('Limit reached', `You can upload at most ${MAX_PHOTOS} photos.`);
+      } else {
+        console.error('Upload failed:', err);
+        Alert.alert('Upload failed', 'Please try again.');
+      }
       setMessage('Upload failed');
-      Alert.alert('Upload failed', 'Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
+  const disabledPick = uploading || loadingCount || photoCount >= MAX_PHOTOS;
+  const disabledUpload = uploading || loadingCount || !imageUri;
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Upload a Profile Photo</Text>
 
-      <TouchableOpacity style={styles.primaryBtn} onPress={pickAndCrop}>
+      <Text style={styles.counterText}>
+        {loadingCount ? 'Loading…' : `${photoCount}/${MAX_PHOTOS} photos`}
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.primaryBtn, disabledPick && styles.btnDisabled]}
+        onPress={pickAndCrop}
+        disabled={disabledPick}
+      >
         <Text style={styles.primaryBtnText}>
-          {imageUri ? 'Choose a Different Image' : 'Choose Image'}
+          {photoCount >= MAX_PHOTOS ? 'Photo limit reached' : (imageUri ? 'Choose a Different Image' : 'Choose Image')}
         </Text>
       </TouchableOpacity>
 
@@ -122,9 +170,9 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryBtn, uploading && styles.btnDisabled]}
+            style={[styles.primaryBtn, disabledUpload && styles.btnDisabled]}
             onPress={cropAndUpload}
-            disabled={uploading}
+            disabled={disabledUpload}
           >
             <Text style={styles.primaryBtnText}>
               {uploading ? 'Uploading…' : 'Upload'}
@@ -133,7 +181,9 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
         </>
       )}
 
-      {uploading && <ActivityIndicator size="large" color="#FFD700" style={{ marginTop: 12 }} />}
+      {(uploading || loadingCount) && (
+        <ActivityIndicator size="large" color="#FFD700" style={{ marginTop: 12 }} />
+      )}
       {!!message && <Text style={styles.message}>{message}</Text>}
     </View>
   );
@@ -153,7 +203,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 6,
+  },
+  counterText: {
+    color: '#FFD700',
+    textAlign: 'center',
+    marginBottom: 14,
+    opacity: 0.9,
   },
   primaryBtn: {
     backgroundColor: '#FFD700',

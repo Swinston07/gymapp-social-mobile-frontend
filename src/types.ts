@@ -16,4 +16,5 @@ export type RootStackParamList = {
   ProgressForm: { id: number };
   ProgressChart: { id: number };
   Dashboard: { id: number };
+  DeleteAccount: {id: number};
 };

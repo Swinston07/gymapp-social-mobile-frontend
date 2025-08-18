@@ -129,3 +129,11 @@ export const getFilteredMatches = async (
     throw error;
   }
 };
+
+// userApi.ts
+export const deleteUser = async (id: number) => {
+  const headers = await getAuthHeader();
+  const res = await axios.delete(`${BASE_URL}/users/${id}`, { headers });
+  return res.data; // 204 returns empty; callers can ignore body
+};
+
