@@ -90,7 +90,7 @@ const NavMenu: React.FC<Props> = ({ userId }) => {
         ]}
       >
         <View style={styles.panelHeader}>
-          <Text style={styles.brand}>Heka.Fit</Text>
+          <Text style={styles.brand}>Meka.Fit</Text>
           <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn}>
             <Feather name="x" size={22} color="#ddd" />
           </TouchableOpacity>
