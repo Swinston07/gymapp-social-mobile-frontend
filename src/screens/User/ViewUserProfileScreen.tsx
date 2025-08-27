@@ -59,7 +59,6 @@ const ViewUserProfileScreen = () => {
 
   const refreshPhotos = async () => {
     const userPhotos = await getUserPhotos(id);
-    // Ensure we receive an array of { photo_id, image_url, ... }
     setPhotos(Array.isArray(userPhotos) ? userPhotos : []);
   };
 
@@ -103,7 +102,7 @@ const ViewUserProfileScreen = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deletePhoto(id, preview.photoId); // uses /users/:userId/photos/:photoId
+            await deletePhoto(id, preview.photoId);
             await refreshPhotos();
             closePreview();
           } catch (e) {
@@ -143,7 +142,6 @@ const ViewUserProfileScreen = () => {
     );
 
     try {
-      // Simple replace: delete old, upload new
       await deletePhoto(id, preview.photoId);
 
       const form = new FormData();
@@ -180,6 +178,39 @@ const ViewUserProfileScreen = () => {
     );
   }
 
+  // --- Compute badges on the client ---
+  const computedBadges: string[] = [];
+
+  if (user.role?.toLowerCase() === 'trainer') {
+    computedBadges.push('🏋️ Trainer');
+  }
+
+  switch (user.experience_level) {
+    case 'BEGINNER': computedBadges.push('🌱 Beginner'); break;
+    case 'EXPERIENCED': computedBadges.push('🔵 Experienced'); break;
+    case 'ADVANCED': computedBadges.push('🏆 Advanced'); break;
+    case 'TRAINER': computedBadges.push('🏋️ Trainer'); break;
+    case 'PROFESSIONAL': computedBadges.push('🥇 Pro'); break;
+  }
+
+  switch (user.lifestyle) {
+    case 'SEDENTARY': computedBadges.push('🛋️ Sedentary'); break;
+    case 'ACTIVE': computedBadges.push('⚡ Active'); break;
+    case 'VERY_ACTIVE': computedBadges.push('💪 Very Active'); break;
+    case 'ATHLETE': computedBadges.push('🥇 Athlete'); break;
+  }
+
+  switch (user.consistency) {
+    case 'ONCE_A_WEEK': computedBadges.push('📅 Once/Week'); break;
+    case 'TWICE_A_WEEK': computedBadges.push('📆 Twice/Week'); break;
+    case 'THREE_PLUS_WEEK': computedBadges.push('🔥 Three+/Week'); break;
+    case 'RANDOM': computedBadges.push('🎲 Random'); break;
+  }
+
+  if (user.is_working_out) {
+    computedBadges.push('✅ Currently Working Out');
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
@@ -193,7 +224,7 @@ const ViewUserProfileScreen = () => {
           <View style={styles.photoGrid}>
             {photos.map((item) => (
               <TouchableOpacity
-                key={String(item.photo_id)} // ✅ stable unique key
+                key={String(item.photo_id)}
                 activeOpacity={0.9}
                 onPress={() => onOpenPreview(item)}
                 style={styles.photoWrap}
@@ -226,11 +257,11 @@ const ViewUserProfileScreen = () => {
           </Text>
         </View>
 
-        {/* Badges */}
-        {!!user.badges?.length && (
+        {/* Badges (computed client-side) */}
+        {!!computedBadges.length && (
           <View style={styles.badgeContainer}>
-            {user.badges.map((badge: string, index: number) => (
-              <View key={`${badge}-${index}`} style={styles.badge}>
+            {computedBadges.map((badge, i) => (
+              <View key={`${badge}-${i}`} style={styles.badge}>
                 <Text style={styles.badgeText}>{badge}</Text>
               </View>
             ))}
