@@ -1,4 +1,3 @@
-// src/screens/User/PhotoUploadScreen.tsx
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -21,7 +20,6 @@ interface Props {
 }
 
 const MAX_PHOTOS = 6;
-// Choose one canonical aspect for profile/card images
 const CROPPED_ASPECT: [number, number] = [4, 5];
 const PREVIEW_WIDTH = 1080; // resize width for consistent uploads
 
@@ -42,7 +40,7 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
       const photos = await getUserPhotos(userId);
       setPhotoCount(Array.isArray(photos) ? photos.length : 0);
     } catch {
-      // If this fails, we’ll still let the backend enforce the limit
+      // Let backend enforce the limit if this fails
     } finally {
       setLoadingCount(false);
     }
@@ -64,8 +62,12 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
       return;
     }
 
-    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!granted) {
+    // Check existing permission first (avoids prompting repeatedly)
+    let perm = await ImagePicker.getMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    }
+    if (!perm.granted) {
       Alert.alert('Permission required', 'Allow photo library access to pick an image.');
       return;
     }
@@ -73,7 +75,7 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: CROPPED_ASPECT, // e.g. 4:5 portrait
+      aspect: CROPPED_ASPECT,
       quality: 1,
       exif: false,
       selectionLimit: 1,
@@ -81,16 +83,19 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
 
     if (result.canceled || !result.assets?.length) return;
 
-    // Normalize the cropped file (consistent size/encoding)
-    const srcUri = result.assets[0].uri;
-    const manipulated = await ImageManipulator.manipulateAsync(
-      srcUri,
-      [{ resize: { width: PREVIEW_WIDTH } }], // keeps aspect automatically
-      { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
-    );
-
-    setImageUri(manipulated.uri);
-    setMessage('');
+    try {
+      const srcUri = result.assets[0].uri;
+      const manipulated = await ImageManipulator.manipulateAsync(
+        srcUri,
+        [{ resize: { width: PREVIEW_WIDTH } }],
+        { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      setImageUri(manipulated.uri);
+      setMessage('');
+    } catch (e) {
+      console.error('Manipulate error:', e);
+      Alert.alert('Image error', 'Could not process the selected image.');
+    }
   };
 
   const cropAndUpload = async () => {
@@ -103,7 +108,6 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
     try {
       setUploading(true);
 
-      // Build a FormData upload with a normalized JPEG
       const name = `photo_${Date.now()}.jpg`;
       const file: any = { uri: imageUri, name, type: 'image/jpeg' };
 
@@ -113,13 +117,12 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
       await uploadPhoto(userId, formData);
 
       setMessage('Upload successful!');
-      setPhotoCount(c => Math.min(MAX_PHOTOS, c + 1));
+      setPhotoCount((c) => Math.min(MAX_PHOTOS, c + 1));
       setImageUri(null);
 
-      // Navigate back to the profile (optional). If you prefer to stay, remove this line.
+      // Optional: navigate back to profile after upload
       navigation.navigate('UserProfile', { id: userId });
     } catch (err: any) {
-      // If you updated photoApi.ts to throw 'MAX_PHOTOS_REACHED' on 409, this catches it:
       if (err?.message === 'MAX_PHOTOS_REACHED' || err?.response?.status === 409) {
         setPhotoCount(MAX_PHOTOS);
         Alert.alert('Limit reached', `You can upload at most ${MAX_PHOTOS} photos.`);
@@ -150,7 +153,11 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
         disabled={disabledPick}
       >
         <Text style={styles.primaryBtnText}>
-          {photoCount >= MAX_PHOTOS ? 'Photo limit reached' : (imageUri ? 'Choose a Different Image' : 'Choose Image')}
+          {photoCount >= MAX_PHOTOS
+            ? 'Photo limit reached'
+            : imageUri
+            ? 'Choose a Different Image'
+            : 'Choose Image'}
         </Text>
       </TouchableOpacity>
 
@@ -160,13 +167,8 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
 
       {imageUri && (
         <>
-          {/* Preview uses the same aspect ratio everywhere */}
           <View style={styles.previewFrame}>
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.previewImage}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: imageUri }} style={styles.previewImage} resizeMode="cover" />
           </View>
 
           <TouchableOpacity
@@ -174,9 +176,7 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
             onPress={cropAndUpload}
             disabled={disabledUpload}
           >
-            <Text style={styles.primaryBtnText}>
-              {uploading ? 'Uploading…' : 'Upload'}
-            </Text>
+            <Text style={styles.primaryBtnText}>{uploading ? 'Uploading…' : 'Upload'}</Text>
           </TouchableOpacity>
         </>
       )}
@@ -192,12 +192,7 @@ const PhotoUploadScreen: React.FC<Props> = ({ route }) => {
 export default PhotoUploadScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-    padding: 20,
-    justifyContent: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#121212', padding: 20, justifyContent: 'center' },
   title: {
     color: '#FFD700',
     fontSize: 24,
@@ -205,12 +200,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 6,
   },
-  counterText: {
-    color: '#FFD700',
-    textAlign: 'center',
-    marginBottom: 14,
-    opacity: 0.9,
-  },
+  counterText: { color: '#FFD700', textAlign: 'center', marginBottom: 14, opacity: 0.9 },
   primaryBtn: {
     backgroundColor: '#FFD700',
     borderRadius: 12,
@@ -220,16 +210,10 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.6 },
   primaryBtnText: { color: '#121212', fontWeight: 'bold' },
-  backLink: {
-    color: '#FFD700',
-    textAlign: 'center',
-    marginTop: 14,
-    fontSize: 16,
-  },
-  // Consistent 4:5 preview container
+  backLink: { color: '#FFD700', textAlign: 'center', marginTop: 14, fontSize: 16 },
   previewFrame: {
     width: '100%',
-    aspectRatio: 4 / 5, // must match CROPPED_ASPECT
+    aspectRatio: 4 / 5,
     backgroundColor: '#1e1e1e',
     borderRadius: 10,
     overflow: 'hidden',
@@ -237,13 +221,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333',
   },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-  },
-  message: {
-    textAlign: 'center',
-    color: '#FFD700',
-    marginTop: 10,
-  },
+  previewImage: { width: '100%', height: '100%' },
+  message: { textAlign: 'center', color: '#FFD700', marginTop: 10 },
 });

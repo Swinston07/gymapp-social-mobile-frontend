@@ -15,8 +15,12 @@
     "ios": {
       "bundleIdentifier": "com.sterling.meka",
       "supportsTablet": true,
+      "buildNumber": "1.0.1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "NSLocationWhenInUseUsageDescription": "We use your location to help you choose your home gym nearby.",
+        "NSPhotoLibraryUsageDescription": "We use your photo library so you can upload profile photos.",
+        "NSPhotoLibraryAddUsageDescription": "We may save edited or cropped photos back to your library.",
+        "NSCameraUsageDescription": "We use the camera so you can take a new profile photo."
       }
     },
     "android": {
@@ -25,10 +29,15 @@
         "foregroundImage": "./assets/splash-icon.png",
         "backgroundColor": "#121212"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
-      "favicon": "./assets/spalsh-icon.png"
+      "favicon": "./assets/splash-icon.png"
     },
     "extra": {
       "eas": {

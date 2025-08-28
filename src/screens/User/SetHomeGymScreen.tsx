@@ -22,16 +22,9 @@ import { RootStackParamList } from '../../types';
 type GymSuggestion = {
   id: string;
   title: string;
-  address: {
-    label: string;
-  };
-  position: {
-    lat: number;
-    lng: number;
-  };
-  category?: {
-    id: string;
-  };
+  address: { label: string };
+  position: { lat: number; lng: number };
+  category?: { id: string };
 };
 
 type SetHomeGymRouteProp = RouteProp<RootStackParamList, 'SetHomeGym'>;
@@ -51,14 +44,27 @@ const SetHomeGymScreen = () => {
 
   useEffect(() => {
     const fetchLocation = async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Please enable location to find gyms nearby.');
-        return;
-      }
+      try {
+        const services = await Location.hasServicesEnabledAsync();
+        if (!services) {
+          Alert.alert('Location Off', 'Please enable Location Services in Settings.');
+          return;
+        }
 
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission denied', 'Please enable location to find gyms nearby.');
+          return;
+        }
+
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+      } catch (err) {
+        console.error('Location error:', err);
+        Alert.alert('Location error', 'Could not get your location. Try again.');
+      }
     };
 
     fetchLocation();
@@ -68,9 +74,14 @@ const SetHomeGymScreen = () => {
     const fetchSuggestions = async () => {
       if (searchInput && location) {
         try {
-          const data: GymSuggestion[] = await getGymSuggestions(searchInput, location.lat, location.lon);
-          const filtered = data.filter(item =>
-            item.category?.id === '700-7100-0057' || /gym|fitness|training/i.test(item.title)
+          const data: GymSuggestion[] = await getGymSuggestions(
+            searchInput,
+            location.lat,
+            location.lon
+          );
+          const filtered = data.filter(
+            (item) =>
+              item.category?.id === '700-7100-0057' || /gym|fitness|training/i.test(item.title)
           );
           setSuggestions(filtered);
         } catch (err) {
@@ -114,10 +125,7 @@ const SetHomeGymScreen = () => {
     >
       <TouchableWithoutFeedback onPress={handleDismiss}>
         <View style={styles.inner}>
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-          >
+          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
             <View style={styles.box}>
               <Text style={styles.heading}>Set Your Home Gym</Text>
 
@@ -135,10 +143,12 @@ const SetHomeGymScreen = () => {
               {showSuggestions && (
                 <FlatList
                   data={suggestions}
-                  keyExtractor={(item) => item.id || item.title}
+                  keyExtractor={(item) => `${item.id}-${item.address?.label ?? ''}`}
                   renderItem={({ item }) => (
                     <TouchableOpacity style={styles.listItem} onPress={() => handleSelect(item)}>
-                      <Text style={styles.listText}>{item.title}, {item.address?.label}</Text>
+                      <Text style={styles.listText}>
+                        {item.title}, {item.address?.label}
+                      </Text>
                     </TouchableOpacity>
                   )}
                   scrollEnabled={false}
@@ -154,9 +164,7 @@ const SetHomeGymScreen = () => {
                 </View>
               )}
 
-              {!!message && (
-                <Text style={styles.message}>{message}</Text>
-              )}
+              {!!message && <Text style={styles.message}>{message}</Text>}
 
               <TouchableOpacity
                 style={styles.backButton}
@@ -175,13 +183,8 @@ const SetHomeGymScreen = () => {
 export default SetHomeGymScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0e0e0e',
-  },
-  inner: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#0e0e0e' },
+  inner: { flex: 1 },
   scroll: {
     flexGrow: 1,
     alignItems: 'center',
@@ -211,14 +214,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 12,
   },
-  listItem: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderColor: '#444',
-  },
-  listText: {
-    color: '#fff',
-  },
+  listItem: { paddingVertical: 10, borderBottomWidth: 1, borderColor: '#444' },
+  listText: { color: '#fff' },
   confirmation: {
     marginTop: 16,
     backgroundColor: '#2a2a2a',
@@ -227,23 +224,8 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     borderWidth: 1,
   },
-  confirmText: {
-    color: '#FFD700',
-  },
-  message: {
-    marginTop: 10,
-    color: '#FF5A5F',
-    textAlign: 'center',
-  },
-  backButton: {
-    marginTop: 20,
-    backgroundColor: '#FFD700',
-    paddingVertical: 10,
-    borderRadius: 6,
-  },
-  backButtonText: {
-    textAlign: 'center',
-    color: '#000',
-    fontWeight: 'bold',
-  },
+  confirmText: { color: '#FFD700' },
+  message: { marginTop: 10, color: '#FF5A5F', textAlign: 'center' },
+  backButton: { marginTop: 20, backgroundColor: '#FFD700', paddingVertical: 10, borderRadius: 6 },
+  backButtonText: { textAlign: 'center', color: '#000', fontWeight: 'bold' },
 });
