@@ -32,7 +32,15 @@ type User = {
   last_name: string;
   username: string;
   age: number;
-  role: string;
+  role?: string;
+
+  // added so we can compute badges on the client
+  experience_level?: 'BEGINNER' | 'EXPERIENCED' | 'ADVANCED' | 'TRAINER' | 'PROFESSIONAL';
+  lifestyle?: 'SEDENTARY' | 'ACTIVE' | 'VERY_ACTIVE' | 'ATHLETE';
+  consistency?: 'ONCE_A_WEEK' | 'TWICE_A_WEEK' | 'THREE_PLUS_WEEK' | 'RANDOM';
+  is_working_out?: boolean;
+
+  // keep optional badges in case backend still sends them, but we won't use them
   badges?: string[];
 };
 
@@ -45,6 +53,39 @@ type MatchCardProps = {
   onViewProfile: () => void;
 };
 
+// --- Compute badges on the client (Option B) ---
+const getComputedBadges = (u: User): string[] => {
+  const out: string[] = [];
+
+  if (u.role?.toLowerCase() === 'trainer') out.push('🏋️ Trainer');
+
+  switch (u.experience_level) {
+    case 'BEGINNER': out.push('🌱 Beginner'); break;
+    case 'EXPERIENCED': out.push('🔵 Experienced'); break;
+    case 'ADVANCED': out.push('🏆 Advanced'); break;
+    case 'TRAINER': out.push('🏋️ Trainer'); break;
+    case 'PROFESSIONAL': out.push('🥇 Pro'); break;
+  }
+
+  switch (u.lifestyle) {
+    case 'SEDENTARY': out.push('🛋️ Sedentary'); break;
+    case 'ACTIVE': out.push('⚡ Active'); break;
+    case 'VERY_ACTIVE': out.push('💪 Very Active'); break;
+    case 'ATHLETE': out.push('🥇 Athlete'); break;
+  }
+
+  switch (u.consistency) {
+    case 'ONCE_A_WEEK': out.push('📅 Once/Week'); break;
+    case 'TWICE_A_WEEK': out.push('📆 Twice/Week'); break;
+    case 'THREE_PLUS_WEEK': out.push('🔥 Three+/Week'); break;
+    case 'RANDOM': out.push('🎲 Random'); break;
+  }
+
+  if (u.is_working_out) out.push('✅ Currently Working Out');
+
+  return out;
+};
+
 const MatchCard: React.FC<MatchCardProps> = ({
   user,
   photoUrl,
@@ -52,47 +93,51 @@ const MatchCard: React.FC<MatchCardProps> = ({
   onInvite,
   onDismiss,
   onViewProfile,
-}) => (
-  <View style={styles.card}>
-    {photoUrl ? (
-      <Image source={{ uri: photoUrl }} style={styles.photo} />
-    ) : (
-      <View style={[styles.photo, { alignItems: 'center', justifyContent: 'center' }]}>
-        <Text style={{ color: '#888' }}>No photo</Text>
-      </View>
-    )}
-    <Text style={styles.name}>
-      {user.first_name} {user.last_name}
-    </Text>
-    <Text style={styles.info}>
-      @{user.username} | {user.age} | {user.role}
-    </Text>
-    <Text style={styles.rating}>⭐ {rating ?? 'N/A'}</Text>
+}) => {
+  const computedBadges = getComputedBadges(user);
 
-    {Array.isArray(user.badges) && user.badges.length > 0 && (
-      <View style={styles.badgeContainer}>
-        {user.badges.map((badge, i) => (
-          <View key={`${badge}-${i}`} style={styles.badge}>
-            <Text style={styles.badgeText}>{badge}</Text>
-          </View>
-        ))}
-      </View>
-    )}
+  return (
+    <View style={styles.card}>
+      {photoUrl ? (
+        <Image source={{ uri: photoUrl }} style={styles.photo} />
+      ) : (
+        <View style={[styles.photo, { alignItems: 'center', justifyContent: 'center' }]}>
+          <Text style={{ color: '#888' }}>No photo</Text>
+        </View>
+      )}
+      <Text style={styles.name}>
+        {user.first_name} {user.last_name}
+      </Text>
+      <Text style={styles.info}>
+        @{user.username} | {user.age} | {user.role ?? 'member'}
+      </Text>
+      <Text style={styles.rating}>⭐ {rating ?? 'N/A'}</Text>
 
-    <TouchableOpacity onPress={onViewProfile}>
-      <Text style={styles.link}>View Profile</Text>
-    </TouchableOpacity>
+      {!!computedBadges.length && (
+        <View style={styles.badgeContainer}>
+          {computedBadges.map((badge, i) => (
+            <View key={`${badge}-${i}`} style={styles.badge}>
+              <Text style={styles.badgeText}>{badge}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
-    <View style={styles.actions}>
-      <TouchableOpacity onPress={onDismiss} style={styles.dismiss}>
-        <Text style={styles.actionText}>❌</Text>
+      <TouchableOpacity onPress={onViewProfile}>
+        <Text style={styles.link}>View Profile</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={onInvite} style={styles.invite}>
-        <Text style={styles.actionText}>💪</Text>
-      </TouchableOpacity>
+
+      <View style={styles.actions}>
+        <TouchableOpacity onPress={onDismiss} style={styles.dismiss}>
+          <Text style={styles.actionText}>❌</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onInvite} style={styles.invite}>
+          <Text style={styles.actionText}>💪</Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const MatchesScreen = () => {
   const route = useRoute<any>();
@@ -124,7 +169,6 @@ const MatchesScreen = () => {
     try {
       setLoading(true);
 
-      // Optionally strip empty filters so backend only receives selected ones
       const payload = Object.fromEntries(
         Object.entries(filters).filter(([, v]) => v !== '' && v != null)
       ) as any;
@@ -133,9 +177,8 @@ const MatchesScreen = () => {
       const hidden = JSON.parse((await AsyncStorage.getItem(getHiddenKey())) || '[]') as number[];
       const visibleMatches = allMatches.filter((u) => !hidden.includes(u.id));
       setMatches(visibleMatches);
-      setCurrentIndex(0); // reset deck to start
+      setCurrentIndex(0);
 
-      // Pull photos/ratings
       const photoMap: Record<number, string> = {};
       const ratingMap: Record<number, string> = {};
 
@@ -272,7 +315,7 @@ const MatchesScreen = () => {
                       onChangeText={(text) => setFilters({ ...filters, max_age: text })}
                     />
 
-                    {/* Experience Level (ENUM - matches Onboarding) */}
+                    {/* Experience Level */}
                     <Text style={styles.pickerLabel}>Experience Level</Text>
                     <View style={styles.pickerWrap}>
                       <Picker
@@ -292,7 +335,7 @@ const MatchesScreen = () => {
                       </Picker>
                     </View>
 
-                    {/* Lifestyle (ENUM - matches Onboarding) */}
+                    {/* Lifestyle */}
                     <Text style={styles.pickerLabel}>Lifestyle</Text>
                     <View style={styles.pickerWrap}>
                       <Picker
@@ -311,7 +354,7 @@ const MatchesScreen = () => {
                       </Picker>
                     </View>
 
-                    {/* Consistency (ENUM - matches Onboarding) */}
+                    {/* Consistency */}
                     <Text style={styles.pickerLabel}>Consistency</Text>
                     <View style={styles.pickerWrap}>
                       <Picker
@@ -472,7 +515,6 @@ const styles = StyleSheet.create({
   },
   applyButtonText: { color: '#121212', fontWeight: 'bold' },
   cancelText: { color: '#ccc', textAlign: 'center', marginTop: 6 },
-  // ⬅️ moved to the left to avoid the hamburger on the right
   filterButton: {
     position: 'absolute',
     top: 20,
@@ -484,8 +526,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   filterButtonText: { color: '#121212', fontWeight: 'bold' },
-
-  // Picker styling
   pickerLabel: {
     color: '#FFD700',
     fontWeight: 'bold',
