@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gymapp-social-mobile-frontend",
+    "name": "Meka",
     "slug": "gymapp-social-mobile-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,14 +13,14 @@
       "backgroundColor": "#121212"
     },
     "ios": {
-      "bundleIdentifier": "com.sterling.gymapp-social",
+      "bundleIdentifier": "com.sterling.meka",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.sterling.gymapp-social",
+      "package": "com.sterling.meka",
       "adaptiveIcon": {
         "foregroundImage": "./assets/splash-icon.png",
         "backgroundColor": "#121212"
