@@ -1,6 +1,11 @@
-export type RootStackParamList = {
+export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+}
+
+export type AppStackParamList = {
+  // Login: undefined;
+  // Register: undefined;
   UserProfile: { id: number };
   Onboarding: { id: number };
   EditProfile: { id: number };
@@ -18,3 +23,5 @@ export type RootStackParamList = {
   Dashboard: { id: number };
   DeleteAccount: {id: number};
 };
+
+export type RootStackParamList = AuthStackParamList & AppStackParamList;

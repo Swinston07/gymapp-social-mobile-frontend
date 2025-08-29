@@ -1,11 +1,14 @@
-// src/screens/Auth/LoginScreen.tsx
 import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CommonActions } from '@react-navigation/native';
 import { loginUser } from '../../api/userApi';
 import { AuthContext } from '../../AuthContext/AuthContext';
 
+// If you have RootStackParamList types handy, you can type the navigation.
+// For brevity here, we keep it as any to avoid cascading type changes.
 const LoginScreen = () => {
   const [formData, setFormData] = useState({ username: '', password_hash: '' });
   const { login } = useContext(AuthContext);
@@ -18,7 +21,26 @@ const LoginScreen = () => {
   const handleSubmit = async () => {
     try {
       const response = await loginUser(formData);
-      await login(response.user, response.token);
+      const { user, token } = response;
+
+      // Persist auth locally (so AppStack boots into the app next launch)
+      await AsyncStorage.setItem('token', token);
+      await AsyncStorage.setItem('userId', String(user.id));
+      // (Optional) Save full user for convenience:
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      // If your AuthContext.login also writes storage, this is harmless (idempotent)
+      if (typeof login === 'function') {
+        await login(user, token);
+      }
+
+      // Jump straight into the app
+      navigation.getParent()?.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'UserProfile', params: { id: user.id } }],
+        })
+      );
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Login Failed', 'Please check your credentials and try again.');
@@ -26,7 +48,6 @@ const LoginScreen = () => {
   };
 
   const goToRegister = () => {
-    // Change 'Register' to your actual route name if different
     navigation.navigate('Register');
   };
 
@@ -60,7 +81,6 @@ const LoginScreen = () => {
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
 
-        {/* Register prompt */}
         <View style={styles.registerRow}>
           <Text style={styles.registerText}>Don’t have an account?</Text>
           <TouchableOpacity onPress={goToRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>

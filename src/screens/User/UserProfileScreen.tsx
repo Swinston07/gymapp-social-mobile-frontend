@@ -1,11 +1,12 @@
-import React, {useState, useEffect } from "react";
+// src/screens/User/UserProfileScreen.tsx
+import React, { useState, useEffect } from "react";
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    Alert,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,117 +16,161 @@ import { getUserById } from '../../api/userApi';
 import { RootStackParamList } from '../../types';
 
 type UserProfileRouteProp = RouteProp<RootStackParamList, "UserProfile">;
-type UserProfileNavProp = NativeStackNavigationProp<RootStackParamList>;
+type UserProfileNavProp = NativeStackNavigationProp<RootStackParamList, 'UserProfile'>;
 
-const isProfileIncomplete = (user: any) => {
-        return !user.experience_level || !user.lifestyle || !user.consistency || !user.about_me;
-    };
+const isProfileIncomplete = (user: any) =>
+  !user?.experience_level || !user?.lifestyle || !user?.consistency || !user?.about_me;
+
+const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 const UserProfileScreen = () => {
-    const navigation = useNavigation<UserProfileNavProp>();
-    const route = useRoute<UserProfileRouteProp>();
-    const { id } = route.params;
+  const navigation = useNavigation<UserProfileNavProp>();
+  const route = useRoute<UserProfileRouteProp>();
 
-    const [user, setUser] = useState<any>(null);
-    const [error, setError] = useState('');
-    const [dismissed, setDismissed] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState('');
+  const [dismissed, setDismissed] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            const storedUser = await AsyncStorage.getItem('user');
-            const parsedUser = storedUser ? JSON.parse(storedUser) : null;
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError('');
 
-            if(!parsedUser || parsedUser.id.toString() !== id.toString()) {
-                navigation.navigate('Login' as never);
-                return;
-            }
+      try {
+        // Resolve user id from route OR storage
+        let uid: number | null = route.params?.id ?? null;
+        if (!uid) {
+          const storedUserId = await AsyncStorage.getItem('userId');
+          if (storedUserId) uid = Number(storedUserId);
+        }
+        if (!uid || Number.isNaN(uid)) {
+          navigation.replace('Login'); // <-- no cast needed
+          return;
+        }
 
-            try {
-                const data = await getUserById(id);
-                setUser(data);
-                const dismissedStatus = await AsyncStorage.getItem(`dismiss-onboarding-${id}`);
-                setDismissed(dismissedStatus === 'true');
-            } catch (err) {
-                setError('Failed to load user profile.');
-            }
-        };
+        // Require token
+        const token = await AsyncStorage.getItem('token');
+        if (!token) {
+          navigation.replace('Login');
+          return;
+        }
 
-        fetchUser();
-    }, [id]);
+        // Fetch (retry once for cold start)
+        let data: any;
+        try {
+          data = await getUserById(uid);
+        } catch {
+          await sleep(800);
+          data = await getUserById(uid);
+        }
 
-    const dismissPrompt = async () => {
-        setDismissed(true);
-        await AsyncStorage.setItem(`dismiss-onboarding-${id}`, 'true');
+        setUser(data);
+        const dismissedStatus = await AsyncStorage.getItem(`dismiss-onboarding-${uid}`);
+        setDismissed(dismissedStatus === 'true');
+      } catch (err) {
+        console.error('UserProfile load error:', err);
+        setError('Failed to load user profile.');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (error) return <Text style={styles.error}>{error}</Text>;
-    if (!user) return <Text style={styles.loading}>Loading...</Text>;
+    load();
+  }, [route.params?.id, navigation]);
 
+  const dismissPrompt = async () => {
+    if (!user?.id) return;
+    setDismissed(true);
+    await AsyncStorage.setItem(`dismiss-onboarding-${user.id}`, 'true');
+  };
+
+  if (loading) {
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.container}>
-                {!dismissed && isProfileIncomplete(user) && (
-                    <View style={styles.prompt}>
-                        <Text style={styles.promptText}>Complete your profile for better gym buddy matching!</Text>
-                        <TouchableOpacity
-                            style={styles.promptButton}
-                            onPress={() => navigation.navigate('Onboarding', { id })}
-                        >
-                            <Text style={styles.promptButtonText}>Complete Profile</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={dismissPrompt}>
-                            <Text style={styles.dismissText}>Dismiss</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                <Text style={styles.title}>Welcome, {user.username}</Text>
-                <Text style={styles.subtitle}>Your Journey in Motion</Text>
-
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Your stats</Text>
-                    <Text style={styles.cardText}>Start Weight: {user.start_weight}</Text>
-                    <Text style={styles.cardText}>Start Body Fat %: {user.start_body_fat_percentage}%</Text>
-                    <Text style={styles.cardText}>Height: {user.feet}'{user.inches}</Text>
-                    
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('ViewUserProfile', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>View Your Profile</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('EditProfile', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>Edit Profile</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('PhotoUpload', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>Upload Photo</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('SetHomeGym', { id: user.id })}
-                        style={styles.linkButton}
-                        >
-                        <Text style={styles.linkButtonText}>Set Home Gym</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Matches', { id: user.id })}
-                        style={styles.linkButton}
-                    >
-                        <Text style={styles.linkButtonText}>Find Gym Buddies</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color="#FFD700" />
+          <Text style={{ color: '#aaa', marginTop: 8 }}>Loading…</Text>
+        </View>
+      </SafeAreaView>
     );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={styles.error}>{error}</Text>
+          <TouchableOpacity style={styles.linkButton} onPress={() => navigation.replace('Login')}>
+            <Text style={styles.linkButtonText}>Go to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={styles.error}>No user found.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const id = Number(user.id);
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {!dismissed && isProfileIncomplete(user) && (
+          <View style={styles.prompt}>
+            <Text style={styles.promptText}>Complete your profile for better gym buddy matching!</Text>
+            <TouchableOpacity
+              style={styles.promptButton}
+              onPress={() => navigation.navigate('Onboarding', { id })}
+            >
+              <Text style={styles.promptButtonText}>Complete Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={dismissPrompt}>
+              <Text style={styles.dismissText}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <Text style={styles.title}>Welcome, {user.username}</Text>
+        <Text style={styles.subtitle}>Your Journey in Motion</Text>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Your stats</Text>
+          <Text style={styles.cardText}>Start Weight: {user.start_weight}</Text>
+          <Text style={styles.cardText}>Start Body Fat %: {user.start_body_fat_percentage}%</Text>
+          <Text style={styles.cardText}>Height: {user.feet}'{user.inches}</Text>
+
+          <TouchableOpacity onPress={() => navigation.navigate('ViewUserProfile', { id })} style={styles.linkButton}>
+            <Text style={styles.linkButtonText}>View Your Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('EditProfile', { id })} style={styles.linkButton}>
+            <Text style={styles.linkButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('PhotoUpload', { id })} style={styles.linkButton}>
+            <Text style={styles.linkButtonText}>Upload Photo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('SetHomeGym', { id })} style={styles.linkButton}>
+            <Text style={styles.linkButtonText}>Set Home Gym</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('Matches', { id })} style={styles.linkButton}>
+            <Text style={styles.linkButtonText}>Find Gym Buddies</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 };
 
 export default UserProfileScreen;
