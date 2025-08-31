@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React, { useEffect, useState } from 'react';
+import { AppState, DeviceEventEmitter, ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityIndicator, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types';
 
 import UserProfileScreen from '../screens/User/UserProfileScreen';
 import OnboardingScreen from '../screens/Auth/OnboardingScreen';
@@ -21,9 +21,7 @@ import ProgressChartScreen from '../screens/progress/ProgressChartScreen';
 import DashboardScreen from '../screens/Dashboard/DashboardScreen';
 import DeleteAccountScreen from '../screens/User/DeleteAccountScreen';
 import LoginScreen from '../screens/Auth/LoginScreen';
-
 import NavMenu from './NavMenu';
-import { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -31,15 +29,12 @@ const AppStack = () => {
   const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Bootstrap on first mount
+  // Initial load
   useEffect(() => {
     const loadUser = async () => {
       try {
         const storedUserId = await AsyncStorage.getItem('userId');
         setUserId(storedUserId ? Number(storedUserId) : null);
-      } catch (err) {
-        console.error('Error loading user:', err);
-        setUserId(null);
       } finally {
         setLoading(false);
       }
@@ -47,23 +42,28 @@ const AppStack = () => {
     loadUser();
   }, []);
 
-  // Refresh userId whenever this stack regains focus (e.g., after Login)
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      (async () => {
-        try {
-          const storedUserId = await AsyncStorage.getItem('userId');
-          if (!cancelled) setUserId(storedUserId ? Number(storedUserId) : null);
-        } catch {
-          if (!cancelled) setUserId(null);
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [])
-  );
+  // React to auth events + app foreground (so NavMenu updates instantly)
+  useEffect(() => {
+    const onLogin = DeviceEventEmitter.addListener('auth:login', async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setUserId(storedUserId ? Number(storedUserId) : null);
+    });
+    const onLogout = DeviceEventEmitter.addListener('auth:logout', () => {
+      setUserId(null);
+    });
+    const onAppState = AppState.addEventListener('change', async (s) => {
+      if (s === 'active') {
+        const storedUserId = await AsyncStorage.getItem('userId');
+        setUserId(storedUserId ? Number(storedUserId) : null);
+      }
+    });
+
+    return () => {
+      onLogin.remove();
+      onLogout.remove();
+      onAppState.remove();
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -86,78 +86,63 @@ const AppStack = () => {
           component={UserProfileScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen
           name="Onboarding"
           component={OnboardingScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-
         <Stack.Screen
           name="PhotoUpload"
           component={PhotoUploadScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen name="ViewUserProfile" component={ViewUserProfileScreen} />
-
         <Stack.Screen
           name="SetHomeGym"
           component={SetHomeGymScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen
           name="Matches"
           component={MatchesScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen
           name="GymBuddies"
           component={GymBuddiesScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="ScheduleWorkout" component={ScheduleWorkoutScreen} />
-
         <Stack.Screen
           name="PendingInvites"
           component={PendingInvitesScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen
           name="ScheduledSessions"
           component={ScheduledSessionsScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen
           name="ProgressForm"
           component={ProgressFormScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen
           name="ProgressChart"
           component={ProgressChartScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen
           name="Dashboard"
           component={DashboardScreen}
           {...(userId !== null ? { initialParams: { id: userId } } : {})}
         />
-
         <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
       </Stack.Navigator>
 
-      {/* Show hamburger only when logged in */}
       {userId !== null && <NavMenu userId={userId} />}
     </>
   );

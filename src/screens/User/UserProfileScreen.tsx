@@ -1,4 +1,3 @@
-// src/screens/User/UserProfileScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -9,6 +8,7 @@ import {
   ActivityIndicator,
   AppState,
   AppStateStatus,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -35,8 +35,8 @@ const UserProfileScreen = () => {
   const [loading, setLoading] = useState(true);
 
   const safeResetToLogin = useCallback(async () => {
-    // wipe auth so AppStack hides NavMenu and boots into Login next launch
     await AsyncStorage.multiRemove(['token', 'userId', 'user']);
+    DeviceEventEmitter.emit('auth:logout'); // tell AppStack to hide menu immediately
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
@@ -49,7 +49,7 @@ const UserProfileScreen = () => {
     setLoading(true);
     setError('');
     try {
-      // Resolve user id from route OR storage
+      // Resolve user id
       let uid: number | null = route.params?.id ?? null;
       if (!uid) {
         const storedUserId = await AsyncStorage.getItem('userId');
@@ -67,12 +67,11 @@ const UserProfileScreen = () => {
         return;
       }
 
-      // Fetch with one retry (helps Railway cold start)
+      // Fetch with retry (cold start)
       let data: any;
       try {
         data = await getUserById(uid);
       } catch (e: any) {
-        // If your http wrapper throws 'UNAUTHORIZED' on 401, catch it early
         if (e?.message === 'UNAUTHORIZED') {
           await safeResetToLogin();
           return;
@@ -83,7 +82,6 @@ const UserProfileScreen = () => {
 
       setUser(data);
 
-      // Onboarding dismiss state
       const dismissedStatus = await AsyncStorage.getItem(`dismiss-onboarding-${uid}`);
       setDismissed(dismissedStatus === 'true');
     } catch (e: any) {
@@ -98,27 +96,23 @@ const UserProfileScreen = () => {
     }
   }, [route.params?.id, safeResetToLogin]);
 
-  // Initial load
   useEffect(() => {
     load();
   }, [load]);
 
-  // Refresh when this screen regains focus (e.g., after edits)
   useFocusEffect(
     useCallback(() => {
-      // Optional: refresh lightweight things; skip heavy refetch if not needed
       return () => {};
     }, [])
   );
 
-  // Re-run load when app returns to foreground (handles “idle for a while” case)
   useEffect(() => {
     const onChange = async (state: AppStateStatus) => {
       if (state === 'active') {
         try {
           await load();
-        } catch (e: any) {
-          // load already handles UNAUTHORIZED
+        } catch {
+          /* handled in load */
         }
       }
     };
