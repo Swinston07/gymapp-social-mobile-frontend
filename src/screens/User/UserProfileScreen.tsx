@@ -1,14 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  AppState,
-  AppStateStatus,
-  DeviceEventEmitter,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
+  AppState, AppStateStatus, DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -36,14 +29,35 @@ const UserProfileScreen = () => {
 
   const safeResetToLogin = useCallback(async () => {
     await AsyncStorage.multiRemove(['token', 'userId', 'user']);
-    DeviceEventEmitter.emit('auth:logout'); // tell AppStack to hide menu immediately
+    DeviceEventEmitter.emit('auth:logout');
     navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      })
+      CommonActions.reset({ index: 0, routes: [{ name: 'Login' }] })
     );
   }, [navigation]);
+
+  const fetchWithBackoff = useCallback(async (uid: number) => {
+    const RETRIES = 3;
+    const BASE_DELAY = 700; // ms
+    let lastErr: any;
+
+    for (let attempt = 0; attempt <= RETRIES; attempt++) {
+      try {
+        return await getUserById(uid);
+      } catch (e: any) {
+        // Unauthorized → stop and log out
+        if (e?.message === 'UNAUTHORIZED' || e?.response?.status === 401) throw e;
+
+        lastErr = e;
+        // Retry transient network/5xx errors
+        const status = e?.response?.status;
+        const transient = !status || status >= 500;
+        if (!transient || attempt === RETRIES) break;
+
+        await sleep(BASE_DELAY * Math.pow(1.6, attempt)); // exponential backoff
+      }
+    }
+    throw lastErr;
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,53 +81,32 @@ const UserProfileScreen = () => {
         return;
       }
 
-      // Fetch with retry (cold start)
-      let data: any;
-      try {
-        data = await getUserById(uid);
-      } catch (e: any) {
-        if (e?.message === 'UNAUTHORIZED') {
-          await safeResetToLogin();
-          return;
-        }
-        await sleep(800);
-        data = await getUserById(uid);
-      }
-
+      // Fetch with robust retry
+      const data = await fetchWithBackoff(uid);
       setUser(data);
 
       const dismissedStatus = await AsyncStorage.getItem(`dismiss-onboarding-${uid}`);
       setDismissed(dismissedStatus === 'true');
     } catch (e: any) {
-      console.error('UserProfile load error:', e);
-      if (e?.message === 'UNAUTHORIZED') {
+      if (e?.message === 'UNAUTHORIZED' || e?.response?.status === 401) {
         await safeResetToLogin();
         return;
       }
+      console.error('UserProfile load error:', e);
       setError('Failed to load user profile.');
     } finally {
       setLoading(false);
     }
-  }, [route.params?.id, safeResetToLogin]);
+  }, [route.params?.id, fetchWithBackoff, safeResetToLogin]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  useFocusEffect(
-    useCallback(() => {
-      return () => {};
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { return () => {}; }, []));
 
   useEffect(() => {
     const onChange = async (state: AppStateStatus) => {
       if (state === 'active') {
-        try {
-          await load();
-        } catch {
-          /* handled in load */
-        }
+        try { await load(); } catch { /* handled */ }
       }
     };
     const sub = AppState.addEventListener('change', onChange);
@@ -126,9 +119,7 @@ const UserProfileScreen = () => {
     await AsyncStorage.setItem(`dismiss-onboarding-${user.id}`, 'true');
   };
 
-  const goToLoginManually = async () => {
-    await safeResetToLogin();
-  };
+  const goToLoginManually = async () => { await safeResetToLogin(); };
 
   if (loading) {
     return (
@@ -175,10 +166,7 @@ const UserProfileScreen = () => {
         {!dismissed && isProfileIncomplete(user) && (
           <View style={styles.prompt}>
             <Text style={styles.promptText}>Complete your profile for better gym buddy matching!</Text>
-            <TouchableOpacity
-              style={styles.promptButton}
-              onPress={() => navigation.navigate('Onboarding', { id })}
-            >
+            <TouchableOpacity style={styles.promptButton} onPress={() => navigation.navigate('Onboarding', { id })}>
               <Text style={styles.promptButtonText}>Complete Profile</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={dismissPrompt}>
@@ -224,84 +212,19 @@ const UserProfileScreen = () => {
 export default UserProfileScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#121212',
-    flexGrow: 1,
-    padding: 16,
-  },
-  title: {
-    fontSize: 24,
-    color: '#FFD700',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: '#aaa',
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-  },
-  cardTitle: {
-    color: '#FFD700',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  cardText: {
-    color: '#fff',
-    marginBottom: 6,
-  },
-  prompt: {
-    backgroundColor: '#FFEB3B',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
-  },
-  promptText: {
-    color: '#000',
-    marginBottom: 8,
-  },
-  promptButton: {
-    backgroundColor: '#FBC02D',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  promptButtonText: {
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  dismissText: {
-    textAlign: 'right',
-    color: '#555',
-    fontSize: 12,
-  },
-  error: {
-    color: 'red',
-    padding: 16,
-  },
-  loading: {
-    color: '#fff',
-    padding: 16,
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
-  linkButton: {
-    backgroundColor: '#FFD700',
-    padding: 12,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  linkButtonText: {
-    color: '#121212',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
+  container: { backgroundColor: '#121212', flexGrow: 1, padding: 16 },
+  title: { fontSize: 24, color: '#FFD700', fontWeight: 'bold', textAlign: 'center' },
+  subtitle: { textAlign: 'center', color: '#aaa', marginBottom: 16 },
+  card: { backgroundColor: '#1e1e1e', borderRadius: 12, padding: 16, marginTop: 16 },
+  cardTitle: { color: '#FFD700', fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
+  cardText: { color: '#fff', marginBottom: 6 },
+  prompt: { backgroundColor: '#FFEB3B', padding: 12, borderRadius: 10, marginBottom: 16 },
+  promptText: { color: '#000', marginBottom: 8 },
+  promptButton: { backgroundColor: '#FBC02D', padding: 10, borderRadius: 8, marginBottom: 4 },
+  promptButtonText: { textAlign: 'center', fontWeight: 'bold' },
+  dismissText: { textAlign: 'right', color: '#555', fontSize: 12 },
+  error: { color: 'red', padding: 16 },
+  safeArea: { flex: 1, backgroundColor: '#121212' },
+  linkButton: { backgroundColor: '#FFD700', padding: 12, borderRadius: 10, marginTop: 20 },
+  linkButtonText: { color: '#121212', fontWeight: 'bold', textAlign: 'center' },
 });

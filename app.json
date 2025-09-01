@@ -2,7 +2,7 @@
   "expo": {
     "name": "Meka",
     "slug": "gymapp-social-mobile-frontend",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/splash-icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "bundleIdentifier": "com.sterling.meka",
       "supportsTablet": true,
-      "buildNumber": "1.0.2",
+      "buildNumber": "1.0.3",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to help you choose your home gym nearby.",
         "NSPhotoLibraryUsageDescription": "We use your photo library so you can upload profile photos.",

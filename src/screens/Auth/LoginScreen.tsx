@@ -1,7 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, DeviceEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginUser } from '../../api/userApi';
 import { AuthContext } from '../../AuthContext/AuthContext';
@@ -9,7 +8,6 @@ import { AuthContext } from '../../AuthContext/AuthContext';
 const LoginScreen = () => {
   const [formData, setFormData] = useState({ username: '', password_hash: '' });
   const { login } = useContext(AuthContext);
-  const navigation = useNavigation<any>();
 
   const handleChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -23,29 +21,15 @@ const LoginScreen = () => {
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('userId', String(user.id));
       await AsyncStorage.setItem('user', JSON.stringify(user));
+      if (typeof login === 'function') await login(user, token);
 
-      if (typeof login === 'function') {
-        await login(user, token);
-      }
-
-      // Notify AppStack so it updates userId immediately
+      // Tell AppStack to re-render into the App navigator
       DeviceEventEmitter.emit('auth:login');
-
-      // Reset the parent (root) navigator to jump into the app
-      navigation.getParent()?.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'UserProfile', params: { id: user.id } }],
-        })
-      );
+      // No manual navigation needed
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Login Failed', 'Please check your credentials and try again.');
     }
-  };
-
-  const goToRegister = () => {
-    navigation.navigate('Register');
   };
 
   return (
@@ -77,13 +61,6 @@ const LoginScreen = () => {
         <TouchableOpacity style={styles.button} onPress={handleSubmit}>
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
-
-        <View style={styles.registerRow}>
-          <Text style={styles.registerText}>Don’t have an account?</Text>
-          <TouchableOpacity onPress={goToRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.registerLink}>Sign up</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );
@@ -93,47 +70,13 @@ export default LoginScreen;
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#121212' },
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-    padding: 20,
-    justifyContent: 'center',
-  },
-  title: {
-    color: '#FFD700',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#121212', padding: 20, justifyContent: 'center' },
+  title: { color: '#FFD700', fontSize: 28, fontWeight: 'bold', marginBottom: 30, textAlign: 'center' },
   input: {
     backgroundColor: '#1e1e1e',
-    borderWidth: 1,
-    borderColor: '#444',
-    color: 'white',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderWidth: 1, borderColor: '#444', color: 'white',
+    borderRadius: 8, padding: 12, marginBottom: 16,
   },
-  button: {
-    backgroundColor: '#FFD700',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  buttonText: {
-    color: '#121212',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  registerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 16,
-    alignItems: 'center',
-    gap: 6,
-  },
-  registerText: { color: '#bbb' },
-  registerLink: { color: '#FFD700', fontWeight: '700', textDecorationLine: 'underline' },
+  button: { backgroundColor: '#FFD700', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 4 },
+  buttonText: { color: '#121212', fontSize: 16, fontWeight: 'bold' },
 });
