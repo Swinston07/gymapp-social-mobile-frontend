@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 
 import LoginScreen from '../screens/Auth/LoginScreen';
+import RegisterScreen from '../screens/Auth/RegisterScreen';
 import UserProfileScreen from '../screens/User/UserProfileScreen';
 import OnboardingScreen from '../screens/Auth/OnboardingScreen';
 import EditProfileScreen from '../screens/User/EditProfileScreen';
@@ -76,7 +77,7 @@ const AppStack = () => {
     return (
       <Stack.Navigator key="auth" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
-        {/* If you use Register: <Stack.Screen name="Register" component={RegisterScreen} /> */}
+        <Stack.Screen name="Register" component={RegisterScreen} />
       </Stack.Navigator>
     );
   }
